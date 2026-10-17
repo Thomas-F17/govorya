@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#F2F3F1">
+<meta name="theme-color" content="#F2F3F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14181C" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Говоря — daily Bulgarian</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -1063,7 +1065,15 @@ let view="today", session=null, reader=null, wordFilter="all", wordQuery="", qui
 const TABS=[["today","Днес","Today"],["words","Думи","Words"],["games","Игри","Games"],["read","Чети","Read"],["letters","Букви","Letters"],["more","Още","More"]];
 let test=null, game=null;
 const busy=()=>!!(session||test||game);
-function applyTheme(){ if(S.settings.theme) document.documentElement.setAttribute("data-theme",S.settings.theme); else document.documentElement.removeAttribute("data-theme"); }
+function applyTheme(){
+  const th=S.settings.theme;
+  if(th) document.documentElement.setAttribute("data-theme",th); else document.documentElement.removeAttribute("data-theme");
+  /* Status bar colour: follow the phone, unless Appearance is forced to light or dark. */
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>{
+    const own = m.media.includes("dark") ? "#14181C" : "#F2F3F1";
+    m.content = th==="dark" ? "#14181C" : th==="light" ? "#F2F3F1" : own;
+  });
+}
 
 function renderTabs(){
   tabs.style.display = busy() ? "none" : "flex";

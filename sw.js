@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = "govorya-v5";
+const VERSION = "govorya-v6";
 const FILES = ["./", "index.html", "bg-words.js", "bg-sentences.js", "manifest.webmanifest", "fonts/pt-sans-regular.woff2", "fonts/pt-sans-bold.woff2", "fonts/pt-sans-italic.woff2", "fonts/pt-sans-bolditalic.woff2", "fonts/pt-sans-narrow-bold.woff2", "fonts/bad-script.woff2",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {

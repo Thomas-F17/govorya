@@ -4,7 +4,9 @@ A self-contained phone app (PWA). No accounts, no server code, no third-party sc
 Your progress is stored only on the device, in the browser's local storage.
 
 ## Files
-- `index.html` — the whole app (content, pronunciation engine, spaced repetition)
+- `index.html` — the app (pronunciation engine, spaced repetition, tests, games, first 300 words)
+- `bg-words.js` — words 300–1000
+- `bg-sentences.js` — sentences, grouped by how many words unlock them (`@60` = after 60 words)
 - `sw.js` — caches everything so the app works offline after the first visit
 - `manifest.webmanifest`, `icons/` — lets you install it to your home screen
 - `fonts/` — PT Sans for print and Bad Script for handwriting (SIL Open Font License, see the OFL files)
@@ -34,7 +36,7 @@ Uses your phone's built-in voices. Add a Bulgarian one:
 sends audio to Apple or Google. It's optional; nothing else leaves the device.
 
 ## Updating
-Edit `index.html` (the word list is `BG_DECK` near the top), then change `VERSION`
+Edit the content (`BG_DECK` in `index.html`, `bg-words.js`, `bg-sentences.js`) or the code, then change `VERSION`
 in `sw.js` (e.g. `govorya-v2`) so installed copies fetch the new files.
 
 ## Sync between devices (optional)

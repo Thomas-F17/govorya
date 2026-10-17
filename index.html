@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F2F3F1">
+<title>Говоря — daily Bulgarian</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Говоря">
+<style>
+@font-face{font-family:"PT Sans";src:url(fonts/pt-sans-regular.woff2) format("woff2");font-weight:100 500;font-style:normal;font-display:swap}
+@font-face{font-family:"PT Sans";src:url(fonts/pt-sans-bold.woff2) format("woff2");font-weight:600 900;font-style:normal;font-display:swap}
+@font-face{font-family:"PT Sans";src:url(fonts/pt-sans-italic.woff2) format("woff2");font-weight:100 500;font-style:italic;font-display:swap}
+@font-face{font-family:"PT Sans";src:url(fonts/pt-sans-bolditalic.woff2) format("woff2");font-weight:600 900;font-style:italic;font-display:swap}
+@font-face{font-family:"PT Sans Narrow";src:url(fonts/pt-sans-narrow-bold.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Bad Script";src:url(fonts/bad-script.woff2) format("woff2");font-weight:100 900;font-display:swap}
+:root{
+  --paper:#F2F3F1; --card:#FFFFFF; --ink:#1E2329; --muted:#5D646D; --line:#D8DBD5;
+  --red:#AE1F2C; --ochre:#C68A22; --pine:#2E5C4F; --pine-soft:#DCE8E3; --red-soft:#F5DEE0;
+  --sans:"PT Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cond:"PT Sans Narrow", "Arial Narrow", "PT Sans", system-ui, sans-serif;
+  --hand:"Bad Script", cursive;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#14181C; --card:#1C2227; --ink:#ECEDEA; --muted:#9BA2A9; --line:#2C333A;
+    --red:#E25563; --ochre:#E0A84A; --pine:#7DB8A5; --pine-soft:#22332E; --red-soft:#3A2226;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14181C; --card:#1C2227; --ink:#ECEDEA; --muted:#9BA2A9; --line:#2C333A;
+  --red:#E25563; --ochre:#E0A84A; --pine:#7DB8A5; --pine-soft:#22332E; --red-soft:#3A2226;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--ochre);outline-offset:2px;border-radius:6px}
+a{color:var(--pine)}
+.wrap{max-width:560px;margin:0 auto;padding:16px 18px 110px}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
+h2{font-size:26px;line-height:1.1}
+h3{font-size:19px}
+p{margin:.4em 0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+/* the one ornament: a cross-stitch band, as on Bulgarian шевица */
+.stitch{height:14px;margin:2px 0 18px;
+  background:
+    linear-gradient(45deg,transparent 42%,var(--red) 42% 58%,transparent 58%) 0 0/14px 14px,
+    linear-gradient(-45deg,transparent 42%,var(--red) 42% 58%,transparent 58%) 0 0/14px 14px;
+  -webkit-mask:linear-gradient(90deg,#000 0 70%,transparent 70% 74%,#000 74% 78%,transparent 78% 82%,#000 82% 84%,transparent 84%);
+          mask:linear-gradient(90deg,#000 0 70%,transparent 70% 74%,#000 74% 78%,transparent 78% 82%,#000 82% 84%,transparent 84%)}
+
+.bg{font-family:var(--sans)}
+.hw{font-family:var(--hand);font-weight:400;font-style:normal;color:var(--pine);letter-spacing:0;line-height:1.25}
+.big+.hw,.day+.hw{margin-top:.15em}
+.big+.hw{font-size:.42em}
+.stage .hw.card{font-size:clamp(28px,8vw,44px)}
+.stage .hw.card.s3{font-size:clamp(22px,6vw,30px)}
+.item .hw{grid-column:1;font-size:19px}
+.sent .hw{grid-column:2;font-size:19px}
+.atable .hwl{font-family:var(--hand);font-size:30px;color:var(--pine);line-height:1}
+.u{text-decoration:underline;text-decoration-color:var(--red);text-decoration-thickness:.09em;text-underline-offset:.14em}
+.phon{color:var(--muted);font-style:italic}
+.phon b{color:var(--ink);font-weight:800;font-style:italic}
+
+/* Today */
+.hero{padding:6px 0 4px}
+.hero .day{font-family:var(--cond);font-weight:800;font-size:64px;line-height:.9;letter-spacing:-.01em}
+.hero .hw{font-size:34px;margin-top:8px}
+.hero .sub{color:var(--muted);margin-top:6px}
+.counts{display:flex;gap:28px;margin:22px 0 18px}
+.counts div{display:flex;flex-direction:column}
+.counts strong{font-family:var(--cond);font-size:44px;line-height:1}
+.counts span{color:var(--muted);font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:15px 20px;font-weight:600;font-size:17px;background:var(--ink);color:var(--paper);min-height:52px}
+.btn.wide{width:100%}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.soft{background:var(--pine-soft);color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:default}
+.tip{margin-top:26px;border-left:3px solid var(--ochre);padding:4px 0 4px 14px}
+.tip h3{font-size:16px;margin-bottom:2px}
+.week{display:flex;gap:6px;margin-top:22px}
+.week i{flex:1;height:34px;border-radius:6px;background:var(--line);position:relative}
+.week i.on{background:var(--pine)}
+.week i em{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-style:normal;font-size:12px;color:var(--muted)}
+
+/* Study */
+.study{position:fixed;inset:0;background:var(--paper);z-index:20;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.study-top{display:flex;align-items:center;gap:12px;padding:12px 18px}
+.bar{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--pine);transition:width .25s}
+.x{border:0;background:transparent;font-size:15px;color:var(--muted);padding:8px}
+.stage{flex:1;overflow:auto;display:flex;flex-direction:column;justify-content:center;padding:10px 22px;max-width:560px;width:100%;margin:0 auto}
+.kind{font-size:14px;color:var(--muted);margin-bottom:10px}
+.big{font-family:var(--cond);font-weight:800;line-height:1;letter-spacing:-.005em;word-break:break-word}
+.big.s1{font-size:clamp(56px,19vw,104px)}
+.big.s2{font-size:clamp(40px,12vw,72px)}
+.big.s3{font-size:clamp(30px,8.5vw,48px);line-height:1.08}
+.big .u{text-decoration-thickness:.07em}
+.en-big{font-size:clamp(26px,7vw,36px);font-weight:600;line-height:1.15}
+.reveal{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.reveal .phon{font-size:22px}
+.reveal .mean{font-size:21px;font-weight:600;margin-top:6px}
+.reveal .note{color:var(--muted);font-size:15px;margin-top:8px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.icon-btn{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:10px 16px;font-weight:600;font-size:15px;display:inline-flex;gap:6px;align-items:center;min-height:44px}
+.icon-btn.big-play{padding:22px 30px;font-size:20px}
+.heard{margin-top:12px;font-size:15px}
+.heard .ok{color:var(--pine);font-weight:700}
+.heard .meh{color:var(--ochre);font-weight:700}
+.heard .no{color:var(--red);font-weight:700}
+.study-foot{padding:12px 18px 18px;max-width:560px;width:100%;margin:0 auto}
+.grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grades button{border:0;border-radius:12px;padding:10px 4px;min-height:60px;font-weight:700;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);border:1.5px solid var(--line)}
+.grades button small{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+.grades .g0{color:var(--red)}
+.grades .g2{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.grades .g2 small{color:var(--paper);opacity:.75}
+.hintline{margin-top:14px;min-height:28px}
+.linkish{border:0;background:none;color:var(--pine);font-weight:600;padding:6px 0;font-size:15px;text-decoration:underline;text-underline-offset:3px}
+
+/* Lists */
+.search{width:100%;font:inherit;padding:13px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);margin:14px 0 10px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin:0 -18px;padding-left:18px;padding-right:18px}
+.chip{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.list{list-style:none;margin:8px 0 0;padding:0}
+.list li{border-bottom:1px solid var(--line)}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;width:100%;text-align:left;border:0;background:none}
+.item .w{font-size:21px;font-weight:600}
+.item .g{grid-column:1;color:var(--muted);font-size:15px}
+.item .p{grid-column:1;font-size:15px}
+.dot{grid-row:1/span 3;grid-column:2;align-self:center;font-size:12px;color:var(--muted);text-align:right}
+.dot.learning{color:var(--ochre)}
+.dot.known{color:var(--pine);font-weight:700}
+
+/* Reader */
+.texts{list-style:none;padding:0;margin:14px 0}
+.texts button{width:100%;text-align:left;border:0;background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:1.5px solid var(--line)}
+.texts .lvl{font-size:13px;color:var(--muted);white-space:nowrap}
+.texts .t{font-weight:700;font-size:19px}
+.sent{display:grid;grid-template-columns:44px 1fr;gap:4px 10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.sent .play{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);font-size:14px}
+.sent .play.on{background:var(--pine);color:#fff;border-color:var(--pine)}
+.sent .line{font-size:21px;line-height:1.35;cursor:pointer}
+.sent .ph{grid-column:2;font-size:16px}
+.sent .tr{grid-column:2;color:var(--pine);font-size:16px}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.res{list-style:none;padding:0;margin:8px 0 0}
+.res li{padding:10px 0;border-bottom:1px solid var(--line)}
+.res a{font-weight:700}
+
+/* Letters */
+.quiz{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:22px;margin:14px 0;text-align:center}
+.quiz .L{font-family:var(--cond);font-size:120px;font-weight:800;line-height:1}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.opts button{border:1.5px solid var(--line);background:var(--paper);border-radius:12px;padding:12px 8px;min-height:54px;font-weight:600}
+.opts button.right{background:var(--pine);color:#fff;border-color:var(--pine)}
+.opts button.wrong{background:var(--red-soft);border-color:var(--red)}
+.atable{width:100%;border-collapse:collapse;margin-top:8px}
+.atable td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.atable .lt{font-family:var(--cond);font-size:34px;font-weight:800;width:74px;line-height:1}
+.atable .ff{color:var(--red);font-size:12px;font-weight:700}
+.atable tr{cursor:pointer}
+
+/* Settings */
+.set{padding:14px 0;border-bottom:1px solid var(--line)}
+.set label{display:block;font-weight:600}
+.set select,.set input[type=range]{width:100%;margin-top:8px;font:inherit;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink)}
+.switch{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.switch input{width:22px;height:22px;accent-color:var(--pine)}
+textarea{width:100%;min-height:90px;font:13px/1.3 ui-monospace,Menlo,monospace;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:10px;margin-top:8px}
+.banner{background:var(--red-soft);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:15px}
+
+/* Tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:10}
+.tabs button{flex:1;border:0;background:none;padding:8px 2px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px}
+.tabs button .gl{font-family:var(--cond);font-size:22px;font-weight:800;line-height:1}
+.tabs button[aria-current="page"]{color:var(--ink)}
+.tabs button[aria-current="page"] .gl{color:var(--red)}
+.done{text-align:center}
+.done .big{margin-bottom:10px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="tabs" id="tabs" aria-label="Sections"></nav>
+
+<script>
+"use strict";
+/* =====================================================================
+   CONTENT — Bulgarian. Format: bulgarian | english | category | note
+   Stress: an apostrophe after the stressed vowel (благодаря').
+   ^ = the final а/я is pronounced as ъ (благодаря' → blagodaryă).
+   Single-vowel words are stressed automatically, except clitics in phrases.
+   Order = the order new cards are introduced (most useful first).
+   ===================================================================== */
+const BG_DECK = `
+Здраве'й|hello (to one person, informal)|phrase|To several people, or politely: Здравейте.
+Благодаря'^|thank you|phrase|The final я sounds like "yă", not "ya".
+Да|yes|phrase|Watch out: many Bulgarians shake the head for yes and nod for no.
+Не|no / not|phrase
+Мо'ля|please / you're welcome|phrase|Also "pardon?" and what you say when handing something over.
+аз|I|pron
+ти|you (one person, informal) / to you|pron|Also the short form for "your": майка ти, your mother.
+съм|I am|verb|Present of "to be": съм, си, е, сме, сте, са.
+е|is (he/she/it is)|verb
+и|and|link
+До'бър де'н|good afternoon / hello|phrase|The all-purpose daytime greeting.
+това'|this / that / it|pron
+какво'|what|q
+и'мам|I have|verb
+ня'ма|there isn't / no (won't)|verb|Also builds the negative future: няма да чета, I won't read.
+и'ма|there is / there are|verb
+не'|not|link|Goes right before the verb: не знам.
+Изви'нете|excuse me / sorry (polite)|phrase|To a friend: Извинявай.
+Ка'к си?|how are you? (informal)|phrase
+Добре', благодаря'^. А ти'?|fine, thanks. And you?|phrase
+той|he|pron
+тя|she|pron
+ни'е|we|pron
+ви'е|you (plural, or polite "you")|pron|Capitalised Вие when used politely to one person.
+те|they|pron
+на|on / at / of / to|link|Also marks possession: книгата на Мария, Maria's book.
+в|in / into / at|link|Becomes във before в- and ф-: във Варна.
+с|with|link|Becomes със before с- and з-.
+за|for / about|link
+от|from / of / since|link
+ще|will (future)|link|ще + present: ще чета, I will read.
+да|to (verb link) / that|link|There is no infinitive: искам да чета, I want to read.
+мо'га|I can|verb
+и'скам|I want|verb
+зна'я|I know|verb|Short form знам is just as common.
+Не зна'м.|I don't know|phrase
+Не разби'рам.|I don't understand|phrase
+Гово'рите ли англи'йски?|do you speak English?|phrase
+ли|question particle|link|Goes after the word in question: Готов ли си? Are you ready?
+къде'|where|q
+кога'|when|q
+защо'|why|q
+как|how|q
+ко'лко|how much / how many|q
+кой|who (m) / which|q
+Ка'к се ка'зваш?|what's your name? (informal)|phrase
+Ка'звам се…|my name is…|phrase|Literally "I call myself…".
+Прия'тно ми е.|nice to meet you|phrase
+Откъде' си?|where are you from?|phrase
+А'з съм от А'нглия.|I'm from England|phrase
+гово'ря|I speak|verb
+разби'рам|I understand|verb
+пра'вя|I do / I make|verb
+ка'звам|I say / I tell|verb|Perfective (one-off) partner: кажа.
+оти'вам|I go (somewhere)|verb|Perfective: отида.
+и'двам|I come|verb|Perfective: дойда. "Come!" is ела!
+хо'дя|I go / I walk (regularly)|verb
+ви'ждам|I see|verb|Perfective: видя.
+да'вам|I give|verb|Perfective: дам.
+ми'сля|I think|verb
+оби'чам|I love / I like|verb
+харе'свам|I like (find pleasing)|verb
+живе'я|I live|verb
+ра'ботя|I work|verb
+у'ча|I study / I learn|verb
+чета'^|I read|verb
+пи'ша|I write|verb
+слу'шам|I listen|verb
+гле'дам|I watch / I look|verb
+ям|I eat|verb
+пи'я|I drink|verb
+спя^|I sleep|verb
+купу'вам|I buy|verb|Perfective: купя.
+пла'щам|I pay|verb|Perfective: платя.
+пи'там|I ask|verb
+отгова'рям|I answer|verb
+чу'вам|I hear|verb
+ча'кам|I wait|verb
+пома'гам|I help|verb|Perfective: помогна.
+тря'бва|must / it's necessary|verb|Трябва да тръгвам. I have to go.
+мо'же би|maybe|phrase
+мно'го|very / a lot / many|adv
+ма'лко|a little / few|adv
+сега'|now|adv
+дне'с|today|adv
+у'тре|tomorrow|adv
+вче'ра|yesterday|adv
+тук|here|adv
+там|there|adv
+ве'че|already / now (any more)|adv
+о'ще|still / yet / more|adv
+добре'|well / fine / OK|adv
+са'мо|only|adv
+съ'що|also / too|adv
+но|but|link
+а|and / while (contrast)|link|Аз съм тук, а ти си там.
+и'ли|or|link
+че|that (I know that…)|link
+ако'|if|link
+защо'то|because|link
+кога'то|when (as a link)|link
+ко'йто|who / which (relative)|link
+мо'й|my (m)|pron|моя (f), мое (n), мои (pl). Short form after a noun: майка ми.
+тво'й|your (m, informal)|pron
+на'ш|our (m)|pron
+ва'ш|your (m, plural / polite)|pron
+не'гов|his (m)|pron
+не'ин|her (m)|pron
+те'хен|their (m)|pron
+ми|to me / my (short)|pron
+му|to him / his (short)|pron
+ни|us / to us / our (short)|pron
+ги|them|pron
+им|to them / their (short)|pron
+се|oneself (reflexive)|pron|Казвам се = I call myself.
+то'зи|this (m)|pron
+та'зи|this (f)|pron
+те'зи|these|pron
+о'нзи|that (m)|pron
+вси'чко|everything|pron
+вси'чки|everyone / all|pron
+ни'що|nothing|pron
+ни'кой|nobody|pron
+ня'кой|somebody|pron
+не'що|something|pron
+какъ'в|what kind of (m)|q
+чий|whose (m)|q
+Ня'ма пробле'м.|no problem|phrase
+Ня'ма защо'.|you're welcome / don't mention it|phrase|Literally "there's no reason".
+Разби'ра се.|of course|phrase
+Мо'же ли по-ба'вно?|slower, please?|phrase|Literally "Can it be slower?"
+Ка'к се ка'зва… на бъ'лгарски?|how do you say… in Bulgarian?|phrase
+Какво' озна'чава…?|what does… mean?|phrase
+Добро' у'тро|good morning|phrase
+До'бър ве'чер|good evening|phrase
+Ле'ка но'щ|good night|phrase
+Дови'ждане|goodbye|phrase
+Ча'о|bye|phrase|Informal — from Italian, as you'd guess.
+Мерси'|thanks (casual)|phrase|From French, and very common.
+Съжаля'вам|I'm sorry|phrase
+Ка'к сте?|how are you? (polite)|phrase
+Заповя'дайте.|here you are / please, go ahead|phrase|Used when serving, offering, or inviting someone in.
+И'скам едно' кафе', мо'ля.|I'd like a coffee, please|phrase
+Ко'лко стру'ва?|how much does it cost?|phrase
+Сме'тката, мо'ля.|the bill, please|phrase
+Наздра'ве!|cheers!|phrase
+Къде' е тоале'тната?|where is the toilet?|phrase
+Ко'лко е часъ'т?|what time is it?|phrase
+Почака'йте ма'лко.|wait a moment (polite)|phrase
+чове'к|person|noun
+хо'ра|people|noun
+ден|day|noun
+вре'ме|time / weather|noun
+годи'на|year|noun
+ра'бота|work / job|noun
+дом|home|noun
+къ'ща|house|noun
+град|town / city|noun
+пари'|money|noun
+вода'|water|noun
+кафе'|coffee / café|noun
+хляб|bread|noun
+храна'|food|noun
+мъж|man / husband|noun
+жена'|woman / wife|noun
+де'те|child|noun|Plural: деца.
+деца'|children|noun
+прия'тел|friend (m)|noun|Female friend: приятелка.
+семе'йство|family|noun
+ма'йка|mother|noun
+баща'|father|noun|Masculine despite the -а.
+брат|brother|noun
+сестра'|sister|noun
+син|son|noun
+дъ'щеря|daughter|noun
+и'ме|name|noun
+ези'к|language / tongue|noun
+ду'ма|word|noun
+въпро'с|question|noun
+отгово'р|answer|noun
+нощ|night|noun|Feminine despite the consonant.
+ве'чер|evening|noun
+се'дмица|week|noun
+ме'сец|month|noun
+час|hour / o'clock|noun
+мину'та|minute|noun
+ста'я|room|noun
+у'лица|street|noun
+магази'н|shop|noun
+рестора'нт|restaurant|noun
+хоте'л|hotel|noun
+га'ра|(train) station|noun
+ма'са|table|noun
+кни'га|book|noun
+кола'|car|noun
+автобу'с|bus|noun
+влак|train|noun
+биле'т|ticket|noun
+път|road / way / time (occasion)|noun|Три пъти = three times.
+мя'сто|place / seat|noun
+страна'|country / side|noun
+мо'ре|sea|noun
+планина'|mountain|noun
+слъ'нце|sun|noun
+дъжд|rain|noun
+сняг|snow|noun
+ръка'|hand / arm|noun
+глава'|head|noun
+сърце'|heart|noun
+пробле'м|problem|noun
+учи'лище|school|noun
+телефо'н|phone|noun
+ле'кар|doctor|noun
+би'ра|beer|noun
+ви'но|wine|noun
+чай|tea|noun
+до'бър|good (m)|adj|добра, добро, добри — the ъ drops out.
+лош|bad|adj
+голя'м|big|adj|Plural: големи.
+ма'лък|small|adj|малка, малко, малки.
+нов|new|adj
+стар|old|adj
+млад|young|adj
+краси'в|beautiful|adj
+ху'бав|nice / lovely|adj
+висо'к|tall / high|adj
+ни'сък|short / low|adj
+бърз|fast|adj
+ба'вен|slow|adj
+ле'сен|easy|adj
+тру'ден|difficult|adj
+скъп|expensive / dear|adj
+е'втин|cheap|adj
+то'пъл|warm|adj
+студе'н|cold|adj
+горе'щ|hot|adj
+прав|right / correct / straight|adj
+ва'жен|important|adj
+интере'сен|interesting|adj
+щастли'в|happy|adj
+уморе'н|tired|adj
+гла'ден|hungry|adj
+зае'т|busy|adj
+свобо'ден|free (not busy)|adj
+пъ'рви|first|adj
+после'ден|last|adj
+бъ'лгарски|Bulgarian (adj / the language)|adj
+бял|white|adj
+че'рен|black|adj
+черве'н|red|adj
+зеле'н|green|adj
+ви'наги|always|adv
+ни'кога|never|adv
+ча'сто|often|adv
+по'сле|after / then / later|adv
+пре'ди|before / ago|adv
+ско'ро|soon / recently|adv
+ло'шо|badly|adv
+за'едно|together|adv
+ведна'га|immediately|adv
+доста'тъчно|enough|adv
+пра'во|straight ahead|adv
+наля'во|to the left|adv
+надя'сно|to the right|adv
+бли'зо|near|adv
+дале'че|far|adv
+ра'но|early|adv
+къ'сно|late|adv
+ме'жду|between|link
+до|to / next to / until|link
+при|at / with (someone)|link|При лекаря = at the doctor's.
+по|along / by / about|link
+без|without|link
+след|after|link
+пред|in front of|link
+под|under|link
+над|above|link
+еди'н|one (m)|num|една (f), едно (n). Also works like "a": един приятел, a friend.
+една'|one (f)|num
+едно'|one (n)|num
+два|two (m)|num
+две|two (f / n)|num
+три|three|num
+че'тири|four|num
+пет|five|num
+шест|six|num
+се'дем|seven|num
+о'сем|eight|num
+де'вет|nine|num
+де'сет|ten|num
+два'десет|twenty|num
+сто|hundred|num
+хиля'да|thousand|num
+ста'вам|I get up / I become|verb
+тръ'гвам|I set off / I leave|verb
+оста'вам|I stay|verb
+взе'мам|I take|verb
+запо'чвам|I begin|verb
+свъ'ршвам|I finish|verb
+отва'рям|I open|verb
+затва'рям|I close|verb
+пъту'вам|I travel|verb
+ка'ня|I invite|verb
+ва'ли|it's raining / it's snowing|verb|Вали сняг. It's snowing.
+`;
+
+const BG_TEXTS = [
+  {title:"Запозна'нство", en:"Meeting someone", lvl:"A1", s:[
+    ["Здраве'йте! Ка'звам се Ма'рк.","Hello! My name is Mark."],
+    ["А'з съм от Ло'ндон, но живе'я в Со'фия.","I'm from London, but I live in Sofia."],
+    ["Гово'ря англи'йски, фре'нски и италиа'нски.","I speak English, French and Italian."],
+    ["Сега' у'ча бъ'лгарски.","Now I'm learning Bulgarian."],
+    ["Бъ'лгарският ези'к е тру'ден, но мно'го краси'в.","Bulgarian is difficult, but very beautiful."],
+    ["Вся'ка су'трин чета'^ по ма'лко.","Every morning I read a little."]
+  ]},
+  {title:"В кафене'то", en:"At the café", lvl:"A1", s:[
+    ["— До'бър де'н! Какво' ще жела'ете?","— Good afternoon! What would you like?"],
+    ["— Едно' кафе' и една' вода', мо'ля.","— A coffee and a water, please."],
+    ["— Голя'мо и'ли ма'лко кафе'?","— A large or a small coffee?"],
+    ["— Ма'лко, благодаря'^.","— Small, thank you."],
+    ["— Заповя'дайте. Дру'го не'що?","— Here you are. Anything else?"],
+    ["— Не', това' е вси'чко. Ко'лко стру'ва?","— No, that's all. How much is it?"],
+    ["— Три е'вро.","— Three euros."]
+  ]},
+  {title:"Вре'мето", en:"The weather", lvl:"A1", s:[
+    ["Дне'с е студе'но и ва'ли сняг.","Today it's cold and snowing."],
+    ["Вче'ра бе'ше по-то'пло.","Yesterday it was warmer."],
+    ["У'тре ще и'ма слъ'нце.","Tomorrow there'll be sun."],
+    ["Зи'мата в Со'фия е студе'на, а ля'тото е горе'що.","Winter in Sofia is cold, and summer is hot."],
+    ["Аз оби'чам пролетта'.","I love the spring."]
+  ]},
+  {title:"Мо'ето семе'йство", en:"My family", lvl:"A1", s:[
+    ["И'мам голя'мо семе'йство.","I have a big family."],
+    ["Ма'йка ми е ле'кар, а баща' ми е учи'тел.","My mother is a doctor, and my father is a teacher."],
+    ["И'мам еди'н брат и две' сестри'.","I have one brother and two sisters."],
+    ["Брат ми живе'е в Пло'вдив.","My brother lives in Plovdiv."],
+    ["В неде'ля вси'чки обя'дваме за'едно вкъ'щи.","On Sundays we all have lunch together at home."],
+    ["Мно'го ги оби'чам.","I love them very much."]
+  ]},
+  {title:"В гра'да", en:"Asking the way", lvl:"A1", s:[
+    ["— Изви'нете, къде' е га'рата?","— Excuse me, where is the station?"],
+    ["— Върве'те пра'во, по'сле зави'йте наля'во.","— Go straight on, then turn left."],
+    ["— Дале'че ли е?","— Is it far?"],
+    ["— Не', на пет мину'ти пеша' е.","— No, it's five minutes on foot."],
+    ["— Благодаря'^ ви!","— Thank you!"],
+    ["— Ня'ма защо'.","— You're welcome."]
+  ]},
+  {title:"Еди'н обикнове'н ден", en:"An ordinary day", lvl:"A2", s:[
+    ["Вся'ка су'трин ста'вам в се'дем часа'.","Every morning I get up at seven o'clock."],
+    ["Пи'я кафе' и чета'^ нови'ните.","I drink coffee and read the news."],
+    ["По'сле оти'вам на ра'бота с автобу'с.","Then I go to work by bus."],
+    ["Ра'ботя до пет часа'.","I work until five."],
+    ["Вечерта' го'твя и гле'дам филм.","In the evening I cook and watch a film."],
+    ["Ля'гам къ'сно, защо'то оби'чам да чета'^.","I go to bed late, because I love reading."]
+  ]},
+  {title:"Бълга'рия", en:"Bulgaria", lvl:"A2", s:[
+    ["Бълга'рия е ма'лка страна' на Балка'ните.","Bulgaria is a small country in the Balkans."],
+    ["Сто'лицата е Со'фия.","The capital is Sofia."],
+    ["На и'зток е Че'рно мо'ре.","To the east is the Black Sea."],
+    ["Дне'с в Бълга'рия пла'щат с е'вро.","Today people in Bulgaria pay in euros."],
+    ["Бълга'рите пра'вят мно'го ху'баво ки'село мля'ко.","Bulgarians make very good yoghurt (literally \"sour milk\")."],
+    ["Внима'вайте: кога'то ка'зват „да“, ча'сто кла'тят глава'.","Careful: when they say \"yes\", they often shake their head."]
+  ]}
+];
+
+const BG_LETTERS = [
+  ["А","a","a as in Italian casa","ма'ма","mum",0],
+  ["Б","b","b","брат","brother",0],
+  ["В","v","v — it looks like a B","вода'","water",1],
+  ["Г","g","always hard: Italian gatto, never gelato","град","city",0],
+  ["Д","d","d","ден","day",0],
+  ["Е","e","open e: Italian bello, French è","е'вро","euro",0],
+  ["Ж","zh","French j in jour","жена'","woman",0],
+  ["З","z","z in zero — not the Italian z","зи'ма","winter",0],
+  ["И","i","Italian / French i","и'ме","name",0],
+  ["Й","y","y in yes","чай","tea",0],
+  ["К","k","k","кафе'","coffee",0],
+  ["Л","l","l","ля'то","summer",0],
+  ["М","m","m","мо'ре","sea",0],
+  ["Н","n","n — it looks like an H","нощ","night",1],
+  ["О","o","Italian o","о'сем","eight",0],
+  ["П","p","p (like Greek π)","пет","five",0],
+  ["Р","r","rolled, like Italian r — it looks like a P","ри'ба","fish",1],
+  ["С","s","s — it looks like a C","сол","salt",1],
+  ["Т","t","t","ти","you",0],
+  ["У","u","Italian u, French ou — it looks like a y","у'тре","tomorrow",1],
+  ["Ф","f","f","филм","film",0],
+  ["Х","h","breathy, like Spanish j — it looks like an X","хляб","bread",1],
+  ["Ц","ts","Italian z in pizza","цар","king",0],
+  ["Ч","ch","Italian ci in ciao","час","hour",0],
+  ["Ш","sh","French ch in chat","шест","six",0],
+  ["Щ","sht","sh + t, as in \"fresh tea\"","о'ще","still",0],
+  ["Ъ","ă","u in English but; close to French e in le","съм","I am",0],
+  ["Ь","y","only before о, softening it: ьо = yo","шофьо'р","driver",0],
+  ["Ю","yu","you","ю'ни","June",0],
+  ["Я","ya","Italian ia — but yă when unstressed","я'бълка","apple",0]
+];
+
+const BG_TIPS = [
+  ["Stress moves, so learn it with the word","Bulgarian stress isn't predictable. The red underline marks it — say the word with that syllable louder and longer."],
+  ["Unstressed а and ъ blur together","Away from the stress, а and ъ both sound like the u in English \"but\". That's why бабата sounds like \"bábătă\". The pronunciation line shows this as ă."],
+  ["Final consonants go voiceless","At the end of a word б, в, г, д, ж, з turn into п, ф, к, т, ш, с: град is said \"grat\", хляб is \"hlyap\"."],
+  ["Е and И never blur","Unlike Russian, unstressed е stays е and и stays и. Pronounce them as you would in Italian."],
+  ["Yes and no with your head","Many Bulgarians shake the head side to side for да and nod for не. When in doubt, trust the word, not the gesture."],
+  ["There's no infinitive","Bulgarian uses да + a conjugated verb: искам да чета, I want to read (literally \"I want that I read\")."],
+  ["The future is just ще","Put ще before the present tense: ще чета, I will read. For the negative use няма да: няма да чета."],
+  ["\"The\" goes on the end","Bulgarian sticks the article onto the noun: град → градът, жена → жената, село → селото, хора → хората."],
+  ["Gender from the ending","Mostly: a consonant means masculine (град), -а/-я feminine (жена), -о/-е neuter (село, море). Exceptions like баща (m) and нощ (f) are marked in the notes."],
+  ["Two verbs for one meaning","Most verbs come in pairs: one for ongoing or repeated actions (купувам) and one for a single completed action (купя). Learn the everyday one first."],
+  ["Ц is your Italian z","Pizza is пица. And Ч is ciao, Ш is the French chat, Ж is the French jour. Your languages give you most of the sounds already."],
+  ["Bulgaria uses the euro","Since January 2026 prices are in euros, so you'll hear евро rather than лев."]
+];
+
+const BG_RESOURCES = [
+  ["Читанка","https://chitanka.info","A free library of Bulgarian books. Start with children's stories."],
+  ["Речник (with stress)","https://rechnik.chitanka.info","Dictionary that marks stress and lists every word form."],
+  ["Forvo — Bulgarian","https://forvo.com/languages/bg/","Native speakers recording single words. Good for checking stress."],
+  ["БНР — Bulgarian National Radio","https://bnr.bg","Short news items with audio. Read along once you're past A2."],
+  ["Уикипедия","https://bg.wikipedia.org","Read articles on topics you already know in English."]
+];
+
+/* Language registry — add "el" (Greek) here later with its own deck,
+   letters, transliteration rules and voice code. */
+const LANGS = {
+  bg: {name:"Bulgarian", native:"Български", tts:"bg-BG", deck:BG_DECK, texts:BG_TEXTS, letters:BG_LETTERS, tips:BG_TIPS, res:BG_RESOURCES}
+};
+
+/* =====================================================================
+   PRONUNCIATION ENGINE (Bulgarian)
+   Rules from Bontcheva, "Elementary Bulgarian Grammar": vowel reduction,
+   final devoicing, voicing assimilation in clusters (в doesn't trigger it).
+   ===================================================================== */
+const VOW = "аеиоуъюя";
+const CLITICS = new Set(["ме","те","го","я","ни","ви","ги","ми","ти","му","й","им","се","си","ли","ще","е","са","съм","сме","сте","не","и","а","на","в","във","с","със","за","от","до","по","при","без","че","да"]);
+const PREPS = new Set(["в","с","к","от","без","под","над","пред","през","зад","из","след"]);
+const DEVOICE = {"б":"п","в":"ф","г":"к","д":"т","ж":"ш","з":"с","дж":"ч"};
+const VOICE = {"п":"б","ф":"в","к":"г","т":"д","ш":"ж","с":"з","ч":"дж"};
+const OBS = new Set([...Object.keys(DEVOICE),...Object.keys(VOICE),"х","ц","щ"]);
+const LAT = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sht","ъ":"ă","ь":"y","ю":"yu","я":"ya","дж":"j"};
+const isCyr = ch => /[\u0400-\u04FF'^]/.test(ch);
+
+function analyze(raw){
+  const toks=[]; let cur="", w=null;
+  for(const ch of raw){ const c=isCyr(ch); if(w===null) w=c; if(c!==w){toks.push({w,t:cur}); cur=""; w=c;} cur+=ch; }
+  if(cur) toks.push({w,t:cur});
+  const words=toks.filter(t=>t.w);
+  const multi=words.length>1;
+  toks.forEach((t,ti)=>{
+    if(!t.w) return;
+    t.ti=ti; const letters=[]; let st=-1, flag=false;
+    for(const ch of t.t){ if(ch==="'") st=letters.length-1; else if(ch==="^") flag=true; else letters.push(ch); }
+    t.letters=letters; t.flag=flag; t.low=letters.join("").toLowerCase();
+    const vi=[]; [...t.low].forEach((c,i)=>{ if(VOW.includes(c)) vi.push(i); });
+    t.nv=vi.length; t.lastV=vi.length?vi[vi.length-1]:-1; t.unstressed=false;
+    if(st<0 && vi.length===1){
+      const nx=toks[ti+1]; const hyph = nx && nx.t.startsWith("-") && (t.low==="по"||t.low==="най");
+      if(multi && CLITICS.has(t.low) && !hyph) t.unstressed=true; else st=vi[0];
+    }
+    if(st<0 && vi.length===0 && multi) t.unstressed=true;
+    t.st=st; t.known = st>=0 || t.unstressed;
+  });
+  return {toks,words,single:words.length===1};
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function plain(raw){return raw.replace(/['^]/g,"");}
+function cyrHTML(a){
+  return a.toks.map(t=>{
+    if(!t.w) return esc(t.t);
+    return t.letters.map((c,i)=> (i===t.st && t.nv>1 && S.settings.showStress) ? `<span class="u">${esc(c)}</span>` : esc(c)).join("");
+  }).join("");
+}
+function phonHTML(a){
+  const W=a.words;
+  W.forEach(t=>{ const s=[], L=t.low; for(let i=0;i<L.length;i++){ const c=L[i]; if(c==="д"&&L[i+1]==="ж"){s.push({k:"дж",i});i++;} else s.push({k:c,i}); } t.segs=s; });
+  for(let wi=W.length-1; wi>=0; wi--){
+    const t=W[wi], s=t.segs;
+    for(let j=s.length-1;j>=0;j--){
+      const g=s[j]; if(!OBS.has(g.k)) continue;
+      let n=s[j+1];
+      if(!n){
+        const nxtW=W[wi+1], sep=a.toks[t.ti+1];
+        if(PREPS.has(t.low) && nxtW && sep && /^\s+$/.test(sep.t) && a.toks[t.ti+2]===nxtW) n=nxtW.segs[0];
+        else { if(DEVOICE[g.k] && !(a.single && t.nv===0)) g.k=DEVOICE[g.k]; continue; }
+      }
+      if(OBS.has(n.k) && n.k!=="в"){
+        const nv = n.k in DEVOICE;
+        if(nv && VOICE[g.k]) g.k=VOICE[g.k];
+        else if(!nv && DEVOICE[g.k]) g.k=DEVOICE[g.k];
+      }
+    }
+  }
+  return a.toks.map(t=>{
+    if(!t.w) return esc(t.t);
+    let out="";
+    t.segs.forEach(g=>{
+      let p; const stressed = g.i===t.st && t.st>=0;
+      if(!VOW.includes(g.k)) p=LAT[g.k] ?? g.k;
+      else {
+        const red = t.known && !stressed, fl = t.flag && g.i===t.lastV;
+        if(g.k==="а") p=(red||fl)?"ă":"a";
+        else if(g.k==="я") p=(red||fl)?"yă":"ya";
+        else p=LAT[g.k];
+      }
+      out += (stressed && t.nv>1) ? `<b>${p}</b>` : p;
+    });
+    const f=t.letters[0];
+    if(f && f!==f.toLowerCase()) out=out.replace(/^(<b>)?(.)/,(m,b,c)=>(b||"")+c.toUpperCase());
+    return out;
+  }).join("");
+}
+const HW = (raw,cls="") => S.settings.showHand ? `<div class="hw ${cls}" lang="bg" aria-label="handwritten">${esc(plain(raw))}</div>` : "";
+const R = raw => { const a=analyze(raw); return {cyr:cyrHTML(a), phon:phonHTML(a), text:plain(raw)}; };
+
+/* =====================================================================
+   DATA
+   ===================================================================== */
+const L = LANGS.bg;
+const CAT = {phrase:"Phrases",pron:"Pronouns",q:"Questions",verb:"Verbs",noun:"Nouns",adj:"Adjectives",adv:"Adverbs",num:"Numbers",link:"Little words"};
+const ITEMS = L.deck.trim().split("\n").map(line=>{
+  const [bg,en,cat,note]=line.split("|");
+  const t=plain(bg).toLowerCase().replace(/[.!?…,]/g,"").trim();
+  return {id:cat+":"+t, bg, en, cat, note:note||""};
+});
+const BY_ID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+
+/* =====================================================================
+   STATE + PERSISTENCE (on this device only; nothing leaves your phone)
+   ===================================================================== */
+const KEY="govorya-bg-v1";
+const DEFAULTS={showHand:true, newPerDay:12, rate:0.85, showStress:true, phonFirst:false, audioFirst:0.3, voice:"", theme:""};
+let S = fresh();
+function fresh(){return {v:1, updatedAt:0, cards:{}, intro:{}, log:{}, settings:{...DEFAULTS}};}
+function loadLocal(){ try{ const j=localStorage.getItem(KEY); if(j){ const o=JSON.parse(j); o.settings={...DEFAULTS,...o.settings}; return o; } }catch(e){} return null; }
+const local=loadLocal(); if(local) S=local;
+function save(){
+  S.updatedAt=Date.now();
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+}
+/* Ask the browser not to clear this site's storage under pressure. */
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+/* =====================================================================
+   SPACED REPETITION (SM-2 style, with short learning steps)
+   ===================================================================== */
+const MIN=6e4, DAY=864e5;
+const today=()=>{const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+const endOfDay=()=>{const d=new Date(); d.setHours(23,59,59,999); return d.getTime();};
+function schedule(c0,grade,now){
+  const c = c0 && c0.e!=null ? {...c0} : {e:2.5,i:0,r:0,l:0,s:0,d:now};
+  if(grade===0){ if(c.r>0) c.l++; c.r=0; c.i=0; c.s=0; c.e=Math.max(1.3,c.e-0.2); c.d=now+MIN; }
+  else if(grade===1){ if(c.i===0) c.d=now+5*MIN; else { c.i=Math.max(1,c.i*1.2); c.d=now+c.i*DAY; } c.e=Math.max(1.3,c.e-0.15); }
+  else if(grade===2){
+    if(c.i===0){ if(c.s===0){ c.s=1; c.d=now+10*MIN; } else { c.i=1; c.r++; c.d=now+DAY; } }
+    else { c.i=c.i*c.e; c.r++; c.d=now+c.i*DAY; }
+  } else { c.i = c.i===0 ? 4 : c.i*c.e*1.3; c.e+=0.15; c.r++; c.d=now+c.i*DAY; }
+  return c;
+}
+function fmtIvl(ms){ if(ms<60*MIN) return Math.max(1,Math.round(ms/MIN))+"m"; if(ms<DAY) return Math.round(ms/36e5)+"h"; const d=ms/DAY; if(d<30) return Math.round(d)+"d"; if(d<365) return Math.round(d/30)+"mo"; return (d/365).toFixed(1)+"y"; }
+function status(itemId){ const c=S.cards[itemId+":r"]; if(!c) return "new"; return c.i>=21?"known":"learning"; }
+function dueList(){ const eod=endOfDay(); return Object.entries(S.cards).filter(([id,c])=>c.d<=eod && BY_ID[id.slice(0,id.lastIndexOf(":"))]).sort((a,b)=>a[1].d-b[1].d).map(x=>x[0]); }
+function newList(){ const room=Math.max(0,S.settings.newPerDay-(S.intro[today()]||0)); const out=[]; for(const it of ITEMS){ if(out.length>=room) break; if(!S.cards[it.id+":r"]) out.push(it.id+":r"); } return out; }
+function streak(){ let n=0; const d=new Date(); const k=x=>x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); if(!S.log[k(d)]) d.setDate(d.getDate()-1); while(S.log[k(d)]){ n++; d.setDate(d.getDate()-1);} return n; }
+
+/* =====================================================================
+   SPEECH: text-to-speech + optional speech recognition
+   ===================================================================== */
+let voices=[];
+function loadVoices(){ if(!("speechSynthesis" in window)) return; voices=speechSynthesis.getVoices().filter(v=>/^bg/i.test(v.lang)); }
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=()=>{ loadVoices(); if(view==="more"&&!session) render(); }; }
+const hasVoice=()=>voices.length>0;
+function speak(text,rate,onend){
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text.replace(/[—…]/g," "));
+  u.lang=L.tts; u.rate=rate||S.settings.rate;
+  const v=voices.find(v=>v.voiceURI===S.settings.voice)||voices[0]; if(v) u.voice=v;
+  if(onend){ u.onend=onend; u.onerror=onend; }
+  speechSynthesis.speak(u);
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function norm(s){return s.toLowerCase().replace(/[^\u0400-\u04FF ]/g,"").replace(/\s+/g," ").trim();}
+function lev(a,b){ const m=a.length,n=b.length; const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]); for(let j=1;j<=n;j++) d[0][j]=j; for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); return d[m][n]; }
+function similarity(a,b){ a=norm(a); b=norm(b); if(!a&&!b) return 1; return 1-lev(a,b)/Math.max(a.length,b.length); }
+function listen(target,cb){
+  if(!SR){ cb({err:"This browser can't listen. Chrome on Android and Safari on iPhone usually can."}); return; }
+  let done=false;
+  try{
+    const r=new SR(); r.lang=L.tts; r.interimResults=false; r.maxAlternatives=3;
+    r.onresult=e=>{ done=true; const alts=[...e.results[0]].map(x=>x.transcript); let best=alts[0], sc=0; alts.forEach(x=>{const s=similarity(x,target); if(s>sc){sc=s;best=x;}}); cb({heard:best,score:sc}); };
+    r.onerror=e=>{ done=true; cb({err: e.error==="not-allowed"||e.error==="service-not-allowed" ? "Microphone access is blocked. Allow the microphone for this site in your browser settings." : e.error==="no-speech" ? "Didn't hear anything. Tap and speak right away." : "Couldn't listen ("+e.error+")."}); };
+    r.onend=()=>{ if(!done) cb({err:"Didn't catch that. Try again."}); };
+    r.start();
+  }catch(e){ cb({err:"Couldn't start the microphone here."}); }
+}
+
+/* =====================================================================
+   UI
+   ===================================================================== */
+const app=document.getElementById("app"), tabs=document.getElementById("tabs");
+let view="today", session=null, reader=null, wordFilter="all", wordQuery="", quiz=null;
+const TABS=[["today","Днес","Today"],["words","Думи","Words"],["read","Чети","Read"],["letters","Аз Буки","Letters"],["more","Още","More"]];
+function applyTheme(){ if(S.settings.theme) document.documentElement.setAttribute("data-theme",S.settings.theme); else document.documentElement.removeAttribute("data-theme"); }
+
+function renderTabs(){
+  tabs.style.display = session ? "none" : "flex";
+  tabs.innerHTML = TABS.map(([k,g,l])=>`<button data-tab="${k}" ${view===k?'aria-current="page"':''}><span class="gl" lang="bg">${g}</span>${l}</button>`).join("");
+  tabs.querySelectorAll("button").forEach(b=>b.onclick=()=>{ view=b.dataset.tab; reader=null; render(); window.scrollTo(0,0); });
+}
+function render(){
+  applyTheme(); renderTabs();
+  if(session) return renderStudy();
+  ({today:renderToday, words:renderWords, read:renderRead, letters:renderLetters, more:renderMore})[view]();
+}
+
+/* ---------- Today ---------- */
+function renderToday(){
+  const due=dueList(), nw=newList();
+  const reviews=due.length, total=reviews+nw.length;
+  const learnt=ITEMS.filter(i=>status(i.id)!=="new").length, known=ITEMS.filter(i=>status(i.id)==="known").length;
+  const st=streak();
+  const tip=L.tips[Math.floor(Date.now()/DAY)%L.tips.length];
+  const days=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); days.push([k,"ПВСЧПСН"[(d.getDay()+6)%7]]); }
+  const hr=new Date().getHours(); const greet = hr<11 ? "Добро' у'тро" : hr<18 ? "До'бър де'н" : "До'бър ве'чер";
+  const g=R(greet);
+  app.innerHTML=`<div class="wrap">
+    <div class="stitch" aria-hidden="true"></div>
+    <section class="hero">
+      <div class="day bg" lang="bg">${g.cyr}</div>${HW(greet,"")}
+      <div class="sub"><span class="phon">${g.phon}</span>${st?` — day ${st} in a row`:""}</div>
+    </section>
+    <div class="counts">
+      <div><strong>${reviews}</strong><span>to review</span></div>
+      <div><strong>${nw.length}</strong><span>new today</span></div>
+      <div><strong>${learnt}</strong><span>of ${ITEMS.length} started</span></div>
+    </div>
+    <button class="btn wide" id="go" ${total?"":"disabled"}>${total?"Start today's practice":"All done for today"}</button>
+    ${!total?`<p class="muted small" style="margin-top:10px">Come back tomorrow, or read a short text in the Read tab.</p>`:""}
+    ${!hasVoice()&&("speechSynthesis" in window)?`<div class="banner">No Bulgarian voice on this device yet, so audio is off. See More → Voice for how to add one.</div>`:""}
+    <div class="week" aria-label="Last 7 days">${days.map(([k,l])=>`<i class="${S.log[k]?"on":""}" title="${k}: ${S.log[k]||0} reviews"><em lang="bg">${l}</em></i>`).join("")}</div>
+    <div class="tip" style="margin-top:40px"><h3>${esc(tip[0])}</h3><p class="muted">${esc(tip[1])}</p></div>
+    ${known?`<p class="muted small" style="margin-top:20px">${known} words you know well (3+ weeks between reviews).</p>`:""}
+  </div>`;
+  const go=document.getElementById("go"); if(go) go.onclick=startSession;
+}
+
+/* ---------- Study session ---------- */
+function startSession(){
+  const due=dueList(), nw=newList(); const q=[];
+  let di=0, ni=0;
+  while(di<due.length||ni<nw.length){ for(let k=0;k<3&&di<due.length;k++) q.push(due[di++]); if(ni<nw.length) q.push(nw[ni++]); }
+  session={queue:q, total:q.length, done:0, cur:null, revealed:false, heard:null, mode:null, hint:false, again:0};
+  nextCard();
+}
+function nextCard(){
+  const s=session; s.revealed=false; s.heard=null; s.hint=false;
+  if(!s.queue.length){ s.cur=null; render(); return; }
+  s.cur=s.queue[0];
+  const [type]=s.cur.split(":").slice(-1);
+  const c=S.cards[s.cur];
+  s.mode = type==="s" ? "speak" : (hasVoice() && c && c.r>0 && Math.random()<S.settings.audioFirst) ? "listen" : "read";
+  render();
+  if(s.mode==="listen") setTimeout(()=>speak(R(BY_ID[itemOf(s.cur)].bg).text),250);
+}
+const itemOf = cid => cid.slice(0,cid.lastIndexOf(":"));
+function grade(g){
+  const s=session, cid=s.cur, now=Date.now(); const prev=S.cards[cid];
+  const isNew=!prev;
+  const c=schedule(prev,g,now); S.cards[cid]=c;
+  if(isNew && cid.endsWith(":r")) S.intro[today()]=(S.intro[today()]||0)+1;
+  if(cid.endsWith(":r") && g>=2 && !S.cards[itemOf(cid)+":s"]) S.cards[itemOf(cid)+":s"]={e:2.5,i:0,r:0,l:0,s:0,d:now+DAY};
+  S.log[today()]=(S.log[today()]||0)+1;
+  save();
+  s.queue.shift();
+  if(c.d < now+20*MIN){ const pos=Math.min(s.queue.length, 3+Math.floor(Math.random()*3)); s.queue.splice(pos,0,cid); if(g===0) s.again++; }
+  else s.done++;
+  if(s.done>s.total) s.total=s.done;
+  nextCard();
+}
+function renderStudy(){
+  const s=session;
+  if(!s.cur){
+    app.innerHTML=`<div class="study"><div class="stage done">
+      <div class="big s2 bg" lang="bg">${R("Бра'во!").cyr}</div>${HW("Браво!","card s2")}
+      <p class="muted">${s.done} card${s.done===1?"":"s"} done. ${streak()>1?`That's ${streak()} days in a row.`:"See you tomorrow."}</p>
+      <div class="row" style="justify-content:center;margin-top:18px"><button class="btn" id="fin">Back to today</button></div>
+    </div></div>`;
+    document.getElementById("fin").onclick=()=>{ session=null; view="today"; render(); };
+    return;
+  }
+  const it=BY_ID[itemOf(s.cur)], r=R(it.bg), c=S.cards[s.cur];
+  const len=r.text.length, size = len<=8?"s1":len<=16?"s2":"s3";
+  const pct = Math.round(100*s.done/Math.max(1,s.total));
+  const kindTxt = {read:"Read it — what does it mean?", listen:"Listen — what did you hear?", speak:"Say it in Bulgarian, out loud"}[s.mode] + (c?"":" (new)");
+  let prompt="";
+  if(s.mode==="read") prompt=`<div class="big ${size} bg" lang="bg">${r.cyr}</div>${HW(it.bg,"card "+size)}
+     <div class="hintline">${s.revealed?"":(S.settings.phonFirst||s.hint)?`<span class="phon" style="font-size:22px">${r.phon}</span>`:`<button class="linkish" id="hint">Show pronunciation</button>`}</div>`;
+  if(s.mode==="listen") prompt= s.revealed ? `<div class="big ${size} bg" lang="bg">${r.cyr}</div>${HW(it.bg,"card "+size)}` : `<div><button class="icon-btn big-play" id="replay">▶ Play again</button></div><div class="hintline"><button class="linkish" id="slow">Play slowly</button></div>`;
+  if(s.mode==="speak") prompt= `<div class="en-big">${esc(it.en)}</div>` + (s.revealed?`<div class="big ${size} bg" lang="bg" style="margin-top:16px">${r.cyr}</div>${HW(it.bg,"card "+size)}`:"");
+  const reveal = s.revealed ? `<div class="reveal">
+      ${s.mode!=="read"||!(S.settings.phonFirst||s.hint)?`<div class="phon">${r.phon}</div>`:`<div class="phon">${r.phon}</div>`}
+      ${s.mode!=="speak"?`<div class="mean">${esc(it.en)}</div>`:""}
+      ${it.note?`<div class="note">${esc(it.note)}</div>`:""}
+      <div class="row" style="margin-top:14px">
+        ${hasVoice()?`<button class="icon-btn" id="play">▶ Listen</button><button class="icon-btn" id="slow2">Slowly</button>`:""}
+        ${SR?`<button class="icon-btn" id="mic">● Check my pronunciation</button>`:""}
+      </div>
+      ${s.heard?`<div class="heard">${s.heard.err?`<span class="no">${esc(s.heard.err)}</span>`:`Heard: <span lang="bg">“${esc(s.heard.heard)}”</span> — <span class="${s.heard.score>.85?"ok":s.heard.score>.6?"meh":"no"}">${s.heard.score>.85?"spot on":s.heard.score>.6?"close":"not quite"}</span>`}</div>`:""}
+    </div>` : "";
+  const now=Date.now();
+  const foot = s.revealed
+    ? `<div class="grades">${["Again","Hard","Good","Easy"].map((l,g)=>`<button class="g${g}" data-g="${g}">${l}<small>${fmtIvl(schedule(c,g,now).d-now)}</small></button>`).join("")}</div>`
+    : `<button class="btn wide" id="show">${s.mode==="speak"?"I've said it — show me":"Show answer"}</button>
+       ${s.mode==="speak"&&SR?`<button class="btn wide ghost" id="mic0" style="margin-top:8px">● Say it and check</button>`:""}`;
+  app.innerHTML=`<div class="study">
+    <div class="study-top"><button class="x" id="quit" aria-label="End session">✕ End</button><div class="bar"><i style="width:${pct}%"></i></div><span class="muted small">${s.queue.length} left</span></div>
+    <div class="stage"><div class="kind">${kindTxt}</div>${prompt}${reveal}</div>
+    <div class="study-foot">${foot}</div>
+  </div>`;
+  const $=id=>document.getElementById(id);
+  $("quit").onclick=()=>{ speechSynthesis&&speechSynthesis.cancel(); session=null; render(); };
+  if($("hint")) $("hint").onclick=()=>{ s.hint=true; render(); };
+  if($("replay")) $("replay").onclick=()=>speak(r.text);
+  if($("slow")) $("slow").onclick=()=>speak(r.text,0.6);
+  if($("play")) $("play").onclick=()=>speak(r.text);
+  if($("slow2")) $("slow2").onclick=()=>speak(r.text,0.6);
+  const doMic=(revealAfter)=>{ const b=$("mic")||$("mic0"); if(b){ b.textContent="Listening…"; b.disabled=true; } listen(r.text,res=>{ s.heard=res; if(revealAfter){ s.revealed=true; } render(); }); };
+  if($("mic")) $("mic").onclick=()=>doMic(false);
+  if($("mic0")) $("mic0").onclick=()=>doMic(true);
+  if($("show")) $("show").onclick=()=>{ s.revealed=true; render(); if(hasVoice()&&s.mode!=="listen") speak(r.text); };
+  app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>grade(+b.dataset.g));
+}
+
+/* ---------- Words ---------- */
+function renderWords(){
+  const q=wordQuery.toLowerCase();
+  const list=ITEMS.filter(i=>(wordFilter==="all"||i.cat===wordFilter) && (!q || plain(i.bg).toLowerCase().includes(q) || i.en.toLowerCase().includes(q) || R(i.bg).phon.replace(/<\/?b>/g,"").includes(q)));
+  app.innerHTML=`<div class="wrap">
+    <h2>Words and phrases</h2>
+    <p class="muted small">${ITEMS.length} of the most used, in the order you'll learn them. Tap one to hear it.</p>
+    <input class="search" id="q" type="search" placeholder="Search Bulgarian, English or sound" value="${esc(wordQuery)}" aria-label="Search">
+    <div class="chips">${[["all","All"],...Object.entries(CAT)].map(([k,l])=>`<button class="chip ${wordFilter===k?"on":""}" data-f="${k}">${l}</button>`).join("")}</div>
+    <ul class="list">${list.map(i=>{ const r=R(i.bg), st=status(i.id); return `<li><button class="item" data-id="${esc(i.id)}"><span class="w bg" lang="bg">${r.cyr}</span><span class="dot ${st}">${st==="new"?"":st==="known"?"known":"learning"}</span>${S.settings.showHand?`<span class="hw" lang="bg">${esc(r.text)}</span>`:""}<span class="p phon">${r.phon}</span><span class="g">${esc(i.en)}</span></button></li>`;}).join("")}</ul>
+    ${!list.length?`<p class="muted">Nothing matches “${esc(wordQuery)}”.</p>`:""}
+  </div>`;
+  const inp=document.getElementById("q");
+  inp.oninput=()=>{ wordQuery=inp.value; const p=inp.selectionStart; renderWords(); const n=document.getElementById("q"); n.focus(); n.setSelectionRange(p,p); };
+  app.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ wordFilter=b.dataset.f; renderWords(); });
+  app.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>speak(R(BY_ID[b.dataset.id].bg).text));
+}
+
+/* ---------- Read ---------- */
+function renderRead(){
+  if(reader) return renderReader();
+  app.innerHTML=`<div class="wrap">
+    <h2>Read and listen</h2>
+    <p class="muted small">Short texts built from the words you're learning. Tap a sentence for its meaning.</p>
+    <ul class="texts">${L.texts.map((t,i)=>`<li><button data-t="${i}"><span><span class="t bg" lang="bg">${R(t.title).cyr}</span>${S.settings.showHand?` <span class="hw" style="font-size:18px">${esc(plain(t.title))}</span>`:""}<br><span class="muted small">${esc(t.en)}</span></span><span class="lvl">${t.lvl}</span></button></li>`).join("")}</ul>
+    <h3 style="margin-top:28px">More to read</h3>
+    <ul class="res">${L.res.map(([n,u,d])=>`<li><a href="${u}" target="_blank" rel="noopener">${esc(n)}</a><div class="muted small">${esc(d)}</div></li>`).join("")}</ul>
+  </div>`;
+  app.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ reader={i:+b.dataset.t, ph:false, tr:false, open:{}, playing:-1}; render(); window.scrollTo(0,0); });
+}
+function renderReader(){
+  const t=L.texts[reader.i];
+  app.innerHTML=`<div class="wrap">
+    <button class="linkish" id="back">← All texts</button>
+    <h2 class="bg" lang="bg" style="margin-top:6px">${R(t.title).cyr}</h2>${HW(t.title,"")}
+    <p class="muted small">${esc(t.en)} — ${t.lvl}</p>
+    <div class="toggles">
+      ${hasVoice()?`<button class="icon-btn" id="all">${reader.playing>=0?"■ Stop":"▶ Play all"}</button>`:""}
+      <button class="icon-btn" id="ph" aria-pressed="${reader.ph}">${reader.ph?"Hide":"Show"} pronunciation</button>
+      <button class="icon-btn" id="tr" aria-pressed="${reader.tr}">${reader.tr?"Hide":"Show"} all translations</button>
+    </div>
+    ${t.s.map(([bg,en],i)=>{ const r=R(bg); return `<div class="sent">
+      <button class="play ${reader.playing===i?"on":""}" data-p="${i}" aria-label="Play sentence ${i+1}" ${hasVoice()?"":"disabled"}>▶</button>
+      <div class="line bg" lang="bg" data-s="${i}">${r.cyr}</div>
+      ${S.settings.showHand?`<div class="hw" lang="bg">${esc(r.text)}</div>`:""}
+      ${reader.ph?`<div class="ph phon">${r.phon}</div>`:""}
+      ${(reader.tr||reader.open[i])?`<div class="tr">${esc(en)}</div>`:""}
+    </div>`;}).join("")}
+    <p class="muted small" style="margin-top:18px">Try it this way: read once without help, then with pronunciation, then listen and read along. Last, play it and repeat each sentence aloud.</p>
+  </div>`;
+  const $=id=>document.getElementById(id);
+  $("back").onclick=()=>{ speechSynthesis&&speechSynthesis.cancel(); reader=null; render(); };
+  $("ph").onclick=()=>{ reader.ph=!reader.ph; renderReader(); };
+  $("tr").onclick=()=>{ reader.tr=!reader.tr; renderReader(); };
+  app.querySelectorAll("[data-s]").forEach(el=>el.onclick=()=>{ const i=+el.dataset.s; reader.open[i]=!reader.open[i]; renderReader(); });
+  app.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.p; reader.playing=i; renderReader(); speak(R(t.s[i][0]).text,null,()=>{ if(reader&&reader.playing===i){ reader.playing=-1; renderReader(); } }); });
+  if($("all")) $("all").onclick=()=>{
+    if(reader.playing>=0){ speechSynthesis.cancel(); reader.playing=-1; renderReader(); return; }
+    const playFrom=i=>{ if(!reader||i>=t.s.length){ if(reader){reader.playing=-1; renderReader();} return; } reader.playing=i; renderReader(); speak(R(t.s[i][0]).text,null,()=>{ if(reader&&reader.playing===i) setTimeout(()=>playFrom(i+1),700); }); };
+    playFrom(0);
+  };
+}
+
+/* ---------- Letters ---------- */
+function newQuiz(){
+  const pool=L.letters; const a=pool[Math.floor(Math.random()*pool.length)];
+  const opts=[a]; while(opts.length<4){ const b=pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(b)) opts.push(b); }
+  opts.sort(()=>Math.random()-.5);
+  quiz={...(quiz||{score:0,n:0}), a, opts, picked:null};
+}
+function renderLetters(){
+  if(!quiz||!quiz.a) newQuiz();
+  const q=quiz;
+  app.innerHTML=`<div class="wrap">
+    <h2>The alphabet</h2>
+    <p class="muted small">30 letters. Six of them look like Latin letters but aren't — they're marked in red below.</p>
+    <div class="quiz">
+      <div class="muted small">Which sound? ${q.n?`${q.score} of ${q.n} right`:""}</div>
+      <div class="L" lang="bg">${q.a[0]}<span style="font-size:.6em;margin-left:.1em">${q.a[0].toLowerCase()}</span></div>
+      ${S.settings.showHand?`<div class="hw" style="font-size:56px">${q.a[0]} ${q.a[0].toLowerCase()}</div>`:""}
+      <div class="opts">${q.opts.map((o,i)=>`<button data-o="${i}" class="${q.picked!==null?(o===q.a?"right":(q.picked===i?"wrong":"")):""}" ${q.picked!==null?"disabled":""}>${esc(o[1])}</button>`).join("")}</div>
+      ${q.picked!==null?`<p style="margin-top:14px"><span lang="bg" style="font-size:22px">${R(q.a[3]).cyr}</span>${S.settings.showHand?` <span class="hw" style="font-size:22px">${esc(plain(q.a[3]))}</span>`:""} <span class="phon">${R(q.a[3]).phon}</span> — ${esc(q.a[4])}<br><span class="muted small">${esc(q.a[2])}</span></p><button class="btn" id="nextq" style="margin-top:6px">Next letter</button>`:""}
+    </div>
+    <table class="atable"><tbody>${L.letters.map((l,i)=>{ const r=R(l[3]); return `<tr data-l="${i}"><td class="lt" lang="bg">${l[0]}${l[0].toLowerCase()}${S.settings.showHand?`<div class="hwl">${l[0]}${l[0].toLowerCase()}</div>`:""}</td><td><strong>${esc(l[1])}</strong> ${l[5]?'<span class="ff">false friend</span>':''}<br><span class="muted small">${esc(l[2])}</span></td><td><span lang="bg">${r.cyr}</span>${S.settings.showHand?`<br><span class="hw" style="font-size:18px">${esc(r.text)}</span>`:""}<br><span class="phon small">${r.phon}</span></td></tr>`;}).join("")}</tbody></table>
+    <p class="muted small" style="margin-top:12px">Tap a row to hear the example. Each letter is shown printed (black) and handwritten (green). Handwriting differs most for д, т, и, к and л — learn to recognise both.</p>
+  </div>`;
+  app.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.o; q.picked=i; q.n++; if(q.opts[i]===q.a) q.score++; renderLetters(); speak(R(q.a[3]).text); });
+  const nx=document.getElementById("nextq"); if(nx) nx.onclick=()=>{ newQuiz(); renderLetters(); };
+  app.querySelectorAll("[data-l]").forEach(tr=>tr.onclick=()=>speak(R(L.letters[+tr.dataset.l][3]).text));
+}
+
+/* ---------- More / settings ---------- */
+function renderMore(){
+  const st=S.settings;
+  const allVoices = ("speechSynthesis" in window) ? speechSynthesis.getVoices() : [];
+  app.innerHTML=`<div class="wrap">
+    <h2>Settings</h2>
+    <div class="set"><label for="npd">New cards per day</label>
+      <select id="npd">${[5,8,10,12,15,20,30].map(n=>`<option ${n===st.newPerDay?"selected":""}>${n}</option>`).join("")}</select>
+      <p class="muted small">12 a day is about 15 minutes once reviews build up. You'll see all ${ITEMS.length} in about ${Math.ceil(ITEMS.length/st.newPerDay)} days.</p></div>
+    <div class="set"><label for="voice">Voice</label>
+      ${hasVoice()?`<select id="voice">${voices.map(v=>`<option value="${esc(v.voiceURI)}" ${v.voiceURI===st.voice?"selected":""}>${esc(v.name)}</option>`).join("")}</select>`
+        :`<p class="banner">No Bulgarian voice found${allVoices.length?"":" (or this browser has no speech)"}. On iPhone: Settings → Accessibility → Spoken Content → Voices → Bulgarian, then download one. On Android: Settings → Text-to-speech → Google → Install voice data → Bulgarian. Then reopen this page.</p>`}
+      <label for="rate" style="margin-top:10px">Speaking speed: ${st.rate.toFixed(2)}×</label><input id="rate" type="range" min="0.5" max="1.1" step="0.05" value="${st.rate}">
+      ${hasVoice()?`<button class="icon-btn" id="test" style="margin-top:8px">▶ Test: ${R("Здраве'йте").cyr}</button>`:""}
+    </div>
+    <div class="set switch"><label for="hs">Also show the handwritten version<br><span class="muted small" style="font-weight:400">Printed letters are always shown; this adds a green handwritten line under each word.</span></label><input id="hs" type="checkbox" ${st.showHand?"checked":""}></div>
+    <div class="set switch"><label for="ss">Underline the stressed vowel</label><input id="ss" type="checkbox" ${st.showStress?"checked":""}></div>
+    <div class="set switch"><label for="pf">Show pronunciation before I answer<br><span class="muted small" style="font-weight:400">Off makes you practise reading Cyrillic.</span></label><input id="pf" type="checkbox" ${st.phonFirst?"checked":""}></div>
+    <div class="set"><label for="af">Listening cards: ${Math.round(st.audioFirst*100)}% of reviews start with audio only</label><input id="af" type="range" min="0" max="0.8" step="0.1" value="${st.audioFirst}"></div>
+    <div class="set"><label for="th">Appearance</label><select id="th"><option value="" ${!st.theme?"selected":""}>Match my phone</option><option value="light" ${st.theme==="light"?"selected":""}>Light</option><option value="dark" ${st.theme==="dark"?"selected":""}>Dark</option></select></div>
+
+    <h2 style="margin-top:30px">Your progress</h2>
+    <p class="muted small">Stored on this device only. Download a backup now and then, and use it to move your progress to another phone.</p>
+    <div class="row" style="margin-top:8px"><button class="icon-btn" id="dl">Download backup file</button><label class="icon-btn" for="up" style="cursor:pointer">Load backup file</label><input id="up" type="file" accept=".json,application/json" hidden></div>
+    <div class="row" style="margin-top:8px"><button class="icon-btn" id="exp">Copy as text</button><button class="icon-btn" id="imp">Restore from text</button></div>
+    <textarea id="bk" placeholder="Paste a backup here, then tap Restore" aria-label="Backup"></textarea>
+    <button class="linkish" id="reset" style="color:var(--red)">Reset all progress</button>
+
+    <h2 style="margin-top:30px">How it works</h2>
+    <p>Each word gets two cards. First you <strong>read</strong> it (or hear it) and recall the meaning. The next day a <strong>speaking</strong> card appears: you see the English and say the Bulgarian out loud. No typing — this app trains reading, listening and speaking.</p>
+    <p>Rate yourself honestly. <em>Again</em> brings the card back in a minute; <em>Good</em> pushes it further each time you remember it (1 day, then about 3, 7, 18…). The words are ordered by how often they're used, so the first 100 already cover a large share of everyday speech.</p>
+    <p>The pronunciation line follows real speech, not spelling: stressed syllables are in bold, ă is the vowel in English "but", and final consonants are written as they sound.</p>
+    <p class="muted small">Audio uses your phone's own voices. Pronunciation checking uses your browser's speech recognition, which on some phones sends the audio to Apple or Google; everything else runs entirely on your device and works offline.</p>
+    <p class="muted small">Greek is next: the app is built so a second language plugs in with its own words, alphabet and voice.</p>
+  </div>`;
+  const $=id=>document.getElementById(id);
+  $("npd").onchange=e=>{ st.newPerDay=+e.target.value; save(); renderMore(); };
+  if($("voice")) $("voice").onchange=e=>{ st.voice=e.target.value; save(); speak("Здравейте"); };
+  $("rate").oninput=e=>{ st.rate=+e.target.value; e.target.previousElementSibling.textContent=`Speaking speed: ${st.rate.toFixed(2)}×`; };
+  $("rate").onchange=()=>save();
+  if($("test")) $("test").onclick=()=>speak("Здравейте");
+  $("hs").onchange=e=>{ st.showHand=e.target.checked; save(); };
+  $("ss").onchange=e=>{ st.showStress=e.target.checked; save(); };
+  $("pf").onchange=e=>{ st.phonFirst=e.target.checked; save(); };
+  $("af").oninput=e=>{ st.audioFirst=+e.target.value; e.target.previousElementSibling.textContent=`Listening cards: ${Math.round(st.audioFirst*100)}% of reviews start with audio only`; };
+  $("af").onchange=()=>save();
+  $("th").onchange=e=>{ st.theme=e.target.value; save(); applyTheme(); };
+  $("exp").onclick=async()=>{ const j=JSON.stringify(S); $("bk").value=j; try{ await navigator.clipboard.writeText(j); $("exp").textContent="Copied"; }catch(e){ $("bk").select(); $("exp").textContent="Selected — copy it"; } };
+  $("imp").onclick=()=>{ try{ const o=JSON.parse($("bk").value); if(!o.cards) throw 0; o.settings={...DEFAULTS,...o.settings}; S=o; save(); $("imp").textContent="Restored"; setTimeout(render,600); }catch(e){ $("imp").textContent="That isn't a valid backup"; } };
+  const restore=txt=>{ const o=JSON.parse(txt); if(!o.cards) throw 0; o.settings={...DEFAULTS,...o.settings}; S=o; save(); };
+  $("dl").onclick=()=>{ const b=new Blob([JSON.stringify(S)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="govorya-backup-"+today()+".json"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
+  $("up").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ restore(await f.text()); alert("Progress restored."); render(); }catch(err){ alert("That file isn't a valid backup."); } };
+  $("reset").onclick=()=>{ if(confirm("Delete all progress? This can't be undone.")){ const keep=S.settings; S=fresh(); S.settings=keep; save(); render(); } };
+}
+
+render();
+if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>

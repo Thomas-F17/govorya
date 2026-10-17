@@ -37,5 +37,20 @@ sends audio to Apple or Google. It's optional; nothing else leaves the device.
 Edit `index.html` (the word list is `BG_DECK` near the top), then change `VERSION`
 in `sw.js` (e.g. `govorya-v2`) so installed copies fetch the new files.
 
+## Sync between devices (optional)
+Progress can be kept in step through a **private** GitHub repository of your own.
+1. Create a private repository, e.g. `govorya-progress` (ticking "Add a README" is fine).
+2. Create a fine-grained token at https://github.com/settings/personal-access-tokens/new
+   - Repository access: Only select repositories → that repository
+   - Permissions → Repository permissions → Contents: Read and write
+3. In the app: More → Sync between devices → enter username, repository, token → Connect.
+   Repeat step 3 on each device (the same token is fine).
+
+The app writes one file, `progress-bg.json`, and merges card by card, keeping the most
+recent review, so studying on two devices never overwrites anything. It syncs on open,
+after each session, about 20 seconds after a review, and when you come back online.
+The token is stored only on the device and is never included in backup files.
+If the token expires, the app says so; create a new one and use "Replace the token".
+
 ## Backups
 More → Download backup file. Load it on a new phone with More → Load backup file.

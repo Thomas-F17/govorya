@@ -179,6 +179,9 @@ p{margin:.4em 0}
 .switch{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .switch input{width:22px;height:22px;accent-color:var(--pine)}
 textarea{width:100%;min-height:90px;font:13px/1.3 ui-monospace,Menlo,monospace;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:10px;margin-top:8px}
+.synctext.bad{color:var(--red)}
+.steps{padding-left:20px}.steps li{margin:6px 0}
+details summary{cursor:pointer;color:var(--pine);font-weight:600;padding:6px 0}
 .banner{background:var(--red-soft);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:15px}
 
 /* Tabs */
@@ -737,13 +740,106 @@ const BY_ID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 const KEY="govorya-bg-v1";
 const DEFAULTS={showHand:true, newPerDay:12, rate:0.85, showStress:true, phonFirst:false, audioFirst:0.3, voice:"", theme:""};
 let S = fresh();
-function fresh(){return {v:1, updatedAt:0, cards:{}, intro:{}, log:{}, settings:{...DEFAULTS}};}
+function fresh(){return {v:1, updatedAt:0, resetAt:0, cards:{}, intro:{}, log:{}, settings:{...DEFAULTS}};}
 function loadLocal(){ try{ const j=localStorage.getItem(KEY); if(j){ const o=JSON.parse(j); o.settings={...DEFAULTS,...o.settings}; return o; } }catch(e){} return null; }
 const local=loadLocal(); if(local) S=local;
-function save(){
-  S.updatedAt=Date.now();
-  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function save(){ S.updatedAt=Date.now(); persist(); scheduleSync(); }
+
+/* =====================================================================
+   GITHUB SYNC (optional)
+   Progress is written as one JSON file to a private repository you own,
+   using a token that can only touch that repository. Devices merge card
+   by card, keeping whichever review happened last.
+   The token is stored separately from your progress and is never
+   included in backup files.
+   ===================================================================== */
+const SYNC_KEY="govorya-sync-v1";
+let SY=(()=>{ try{ return JSON.parse(localStorage.getItem(SYNC_KEY))||{}; }catch(e){ return {}; } })();
+function saveSY(){ try{ localStorage.setItem(SYNC_KEY, JSON.stringify(SY)); }catch(e){} }
+const syncOn=()=>!!(SY.owner && SY.repo && SY.token);
+let syncing=false, syncAgain=false, syncTimer=null;
+const b64enc=s=>{ const b=new TextEncoder().encode(s); let bin=""; for(let i=0;i<b.length;i+=0x8000) bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(bin); };
+const b64dec=s=>{ const bin=atob(s.replace(/\s/g,"")); const b=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i); return new TextDecoder().decode(b); };
+function deviceName(){ const u=navigator.userAgent; return /iPhone/.test(u)?"iPhone":/iPad/.test(u)?"iPad":/Android/.test(u)?"Android":/Mac/.test(u)?"Mac":/Windows/.test(u)?"Windows":/Linux/.test(u)?"Linux":"device"; }
+async function gh(method,url,body){
+  const r=await fetch("https://api.github.com"+url,{method,cache:"no-store",headers:{
+    "Authorization":"Bearer "+SY.token.trim(),"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",
+    ...(body?{"Content-Type":"application/json"}:{})}, body: body?JSON.stringify(body):undefined});
+  let data=null; try{ data=await r.json(); }catch(e){}
+  return {status:r.status, data};
 }
+const repoPath=()=>`/repos/${encodeURIComponent(SY.owner.trim())}/${encodeURIComponent(SY.repo.trim())}`;
+const filePath=()=>repoPath()+"/contents/progress-bg.json";
+function canonical(v){ if(Array.isArray(v)) return "["+v.map(canonical).join(",")+"]"; if(v&&typeof v==="object") return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canonical(v[k])).join(",")+"}"; return JSON.stringify(v===undefined?null:v); }
+const sig=p=>canonical({resetAt:p.resetAt||0, cards:p.cards||{}, log:p.log||{}, intro:p.intro||{}});
+function mergeRemote(R){
+  const reset=Math.max(S.resetAt||0, R.resetAt||0);
+  const keep=c=>c && !(reset>0 && (c.t||0)<reset);
+  const newer=(a,b)=>{ if(!keep(a)) return keep(b)?b:null; if(!keep(b)) return a; const ta=a.t||0, tb=b.t||0; if(ta!==tb) return ta>tb?a:b; if((a.r||0)!==(b.r||0)) return (b.r||0)>(a.r||0)?b:a; return (b.d||0)>(a.d||0)?b:a; };
+  const cards={};
+  for(const id of new Set([...Object.keys(S.cards),...Object.keys(R.cards||{})])){ const w=newer(S.cards[id],(R.cards||{})[id]); if(w) cards[id]=w; }
+  const maxMerge=(a,b)=>{ const o={...(a||{})}; for(const [k,v] of Object.entries(b||{})) o[k]=Math.max(o[k]||0,v||0); return o; };
+  S.cards=cards; S.log=maxMerge(S.log,R.log); S.intro=maxMerge(S.intro,R.intro); S.resetAt=reset;
+}
+function syncErr(code){
+  if(code==="network") return "Couldn't reach GitHub. It will try again when you're online.";
+  if(code===401) return "GitHub rejected the token. It may have expired — paste a new one below.";
+  if(code===403) return "The token isn't allowed to write here. Give it Contents: Read and write on this repository.";
+  if(code===404) return "Repository not found. Check the owner and name, and that the token was given access to it.";
+  if(code==="conflict") return "Another device was saving at the same moment. Tap Sync now to try again.";
+  return "GitHub returned an error ("+code+"). Tap Sync now to try again.";
+}
+function scheduleSync(ms){ if(!syncOn()) return; clearTimeout(syncTimer); syncTimer=setTimeout(sync, ms==null?20000:ms); }
+async function sync(){
+  if(!syncOn()) return;
+  if(syncing){ syncAgain=true; return; }
+  clearTimeout(syncTimer);
+  if(!navigator.onLine){ SY.status="offline"; saveSY(); refreshSyncUI(); return; }
+  syncing=true; SY.status="syncing"; refreshSyncUI();
+  let changed=false;
+  try{
+    let done=false;
+    for(let attempt=0; attempt<3 && !done; attempt++){
+      let g; try{ g=await gh("GET",filePath()); }catch(e){ throw "network"; }
+      let remote=null, sha;
+      if(g.status===200){ sha=g.data.sha; try{ remote=JSON.parse(b64dec(g.data.content)); }catch(e){ remote=null; } }
+      else if(g.status!==404) throw g.status;
+      const before=sig(S);
+      if(remote) mergeRemote(remote);
+      if(sig(S)!==before){ changed=true; persist(); }
+      if(remote && sig(remote)===sig(S)){ done=true; break; }
+      const body={message:`Progress from ${deviceName()}, ${new Date().toISOString().slice(0,16).replace("T"," ")}`,
+        content:b64enc(JSON.stringify({app:"govorya",lang:"bg",v:1,savedAt:Date.now(),resetAt:S.resetAt||0,cards:S.cards,log:S.log,intro:S.intro}))};
+      if(sha) body.sha=sha;
+      let p; try{ p=await gh("PUT",filePath(),body); }catch(e){ throw "network"; }
+      if(p.status===200||p.status===201) done=true;
+      else if(p.status===409||p.status===422) continue;
+      else throw p.status;
+    }
+    if(!done) throw "conflict";
+    SY.last=Date.now(); SY.status="ok"; SY.err="";
+  }catch(e){ SY.status="error"; SY.err=syncErr(e); if(e==="network") SY.status="offline"; }
+  syncing=false; saveSY();
+  if(changed && !session) render(); else refreshSyncUI();
+  if(syncAgain){ syncAgain=false; sync(); }
+}
+function ago(t){ if(!t) return "never"; const s=(Date.now()-t)/1000; if(s<60) return "just now"; if(s<3600) return Math.round(s/60)+" min ago"; if(s<86400) return Math.round(s/3600)+" h ago"; return Math.round(s/86400)+" days ago"; }
+function syncText(){
+  if(!syncOn()) return "";
+  if(SY.status==="syncing") return "Syncing with GitHub…";
+  if(SY.status==="offline") return "Offline. Changes will sync when you're back online"+(SY.last?` (last synced ${ago(SY.last)}).`:".");
+  if(SY.status==="error") return SY.err;
+  return "Synced with GitHub "+ago(SY.last)+".";
+}
+function refreshSyncUI(){ document.querySelectorAll("[data-sync]").forEach(el=>{ el.textContent=syncText(); el.classList.toggle("bad", SY.status==="error"); }); }
+document.addEventListener("visibilitychange",()=>{
+  if(!syncOn()) return;
+  if(document.visibilityState==="visible"){ if(!SY.last || Date.now()-SY.last>60000) sync(); }
+  else if(syncTimer){ sync(); }
+});
+window.addEventListener("online",()=>{ if(syncOn()) sync(); });
+
 /* Ask the browser not to clear this site's storage under pressure. */
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 
@@ -755,6 +851,7 @@ const today=()=>{const d=new Date(); return d.getFullYear()+"-"+String(d.getMont
 const endOfDay=()=>{const d=new Date(); d.setHours(23,59,59,999); return d.getTime();};
 function schedule(c0,grade,now){
   const c = c0 && c0.e!=null ? {...c0} : {e:2.5,i:0,r:0,l:0,s:0,d:now};
+  c.t=now;
   if(grade===0){ if(c.r>0) c.l++; c.r=0; c.i=0; c.s=0; c.e=Math.max(1.3,c.e-0.2); c.d=now+MIN; }
   else if(grade===1){ if(c.i===0) c.d=now+5*MIN; else { c.i=Math.max(1,c.i*1.2); c.d=now+c.i*DAY; } c.e=Math.max(1.3,c.e-0.15); }
   else if(grade===2){
@@ -766,7 +863,8 @@ function schedule(c0,grade,now){
 function fmtIvl(ms){ if(ms<60*MIN) return Math.max(1,Math.round(ms/MIN))+"m"; if(ms<DAY) return Math.round(ms/36e5)+"h"; const d=ms/DAY; if(d<30) return Math.round(d)+"d"; if(d<365) return Math.round(d/30)+"mo"; return (d/365).toFixed(1)+"y"; }
 function status(itemId){ const c=S.cards[itemId+":r"]; if(!c) return "new"; return c.i>=21?"known":"learning"; }
 function dueList(){ const eod=endOfDay(); return Object.entries(S.cards).filter(([id,c])=>c.d<=eod && BY_ID[id.slice(0,id.lastIndexOf(":"))]).sort((a,b)=>a[1].d-b[1].d).map(x=>x[0]); }
-function newList(){ const room=Math.max(0,S.settings.newPerDay-(S.intro[today()]||0)); const out=[]; for(const it of ITEMS){ if(out.length>=room) break; if(!S.cards[it.id+":r"]) out.push(it.id+":r"); } return out; }
+function introducedToday(){ const t=today(); let n=0; for(const [id,c] of Object.entries(S.cards)) if(c.f===t && id.endsWith(":r")) n++; return Math.max(n,S.intro[t]||0); }
+function newList(){ const room=Math.max(0,S.settings.newPerDay-introducedToday()); const out=[]; for(const it of ITEMS){ if(out.length>=room) break; if(!S.cards[it.id+":r"]) out.push(it.id+":r"); } return out; }
 function streak(){ let n=0; const d=new Date(); const k=x=>x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); if(!S.log[k(d)]) d.setDate(d.getDate()-1); while(S.log[k(d)]){ n++; d.setDate(d.getDate()-1);} return n; }
 
 /* =====================================================================
@@ -847,6 +945,7 @@ function renderToday(){
     <div class="week" aria-label="Last 7 days">${days.map(([k,l])=>`<i class="${S.log[k]?"on":""}" title="${k}: ${S.log[k]||0} reviews"><em lang="bg">${l}</em></i>`).join("")}</div>
     <div class="tip" style="margin-top:40px"><h3>${esc(tip[0])}</h3><p class="muted">${esc(tip[1])}</p></div>
     ${known?`<p class="muted small" style="margin-top:20px">${known} words you know well (3+ weeks between reviews).</p>`:""}
+    ${syncOn()?`<p class="muted small synctext" data-sync style="margin-top:8px">${esc(syncText())}</p>`:""}
   </div>`;
   const go=document.getElementById("go"); if(go) go.onclick=startSession;
 }
@@ -861,7 +960,7 @@ function startSession(){
 }
 function nextCard(){
   const s=session; s.revealed=false; s.heard=null; s.hint=false;
-  if(!s.queue.length){ s.cur=null; render(); return; }
+  if(!s.queue.length){ s.cur=null; render(); if(syncOn()) sync(); return; }
   s.cur=s.queue[0];
   const [type]=s.cur.split(":").slice(-1);
   const c=S.cards[s.cur];
@@ -874,8 +973,8 @@ function grade(g){
   const s=session, cid=s.cur, now=Date.now(); const prev=S.cards[cid];
   const isNew=!prev;
   const c=schedule(prev,g,now); S.cards[cid]=c;
-  if(isNew && cid.endsWith(":r")) S.intro[today()]=(S.intro[today()]||0)+1;
-  if(cid.endsWith(":r") && g>=2 && !S.cards[itemOf(cid)+":s"]) S.cards[itemOf(cid)+":s"]={e:2.5,i:0,r:0,l:0,s:0,d:now+DAY};
+  if(isNew && cid.endsWith(":r")){ c.f=today(); S.intro[today()]=(S.intro[today()]||0)+1; }
+  if(cid.endsWith(":r") && g>=2 && !S.cards[itemOf(cid)+":s"]) S.cards[itemOf(cid)+":s"]={e:2.5,i:0,r:0,l:0,s:0,d:now+DAY,t:now};
   S.log[today()]=(S.log[today()]||0)+1;
   save();
   s.queue.shift();
@@ -1051,11 +1150,32 @@ function renderMore(){
     <div class="set"><label for="th">Appearance</label><select id="th"><option value="" ${!st.theme?"selected":""}>Match my phone</option><option value="light" ${st.theme==="light"?"selected":""}>Light</option><option value="dark" ${st.theme==="dark"?"selected":""}>Dark</option></select></div>
 
     <h2 style="margin-top:30px">Your progress</h2>
-    <p class="muted small">Stored on this device only. Download a backup now and then, and use it to move your progress to another phone.</p>
+    <p class="muted small">${syncOn()?"Stored on this device and synced to your GitHub repository.":"Stored on this device only."} A backup file now and then is still a good safety net.</p>
     <div class="row" style="margin-top:8px"><button class="icon-btn" id="dl">Download backup file</button><label class="icon-btn" for="up" style="cursor:pointer">Load backup file</label><input id="up" type="file" accept=".json,application/json" hidden></div>
     <div class="row" style="margin-top:8px"><button class="icon-btn" id="exp">Copy as text</button><button class="icon-btn" id="imp">Restore from text</button></div>
     <textarea id="bk" placeholder="Paste a backup here, then tap Restore" aria-label="Backup"></textarea>
     <button class="linkish" id="reset" style="color:var(--red)">Reset all progress</button>
+
+    <h2 style="margin-top:30px">Sync between devices</h2>
+    ${syncOn()?`
+      <p>Connected to <strong>${esc(SY.owner)}/${esc(SY.repo)}</strong>. Syncs when you open the app, after each session, and shortly after you review.</p>
+      <p class="small synctext" data-sync>${esc(syncText())}</p>
+      <div class="row" style="margin-top:8px"><button class="icon-btn" id="syncnow">Sync now</button><button class="icon-btn" id="unsync">Disconnect this device</button></div>
+      <details style="margin-top:10px"><summary class="small">Replace the token</summary>
+        <input class="search" id="tok2" type="password" placeholder="New token (github_pat_…)" autocomplete="off">
+        <button class="icon-btn" id="savetok">Save token</button></details>`
+    :`
+      <p class="small">Keep progress in step between your phone and computer, using a private GitHub repository only you can see. Do steps 1 and 2 once; step 3 on each device.</p>
+      <ol class="small steps">
+        <li>On GitHub, create a new <strong>private</strong> repository, for example <em>govorya-progress</em>.</li>
+        <li>Create a token at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Settings → Fine-grained tokens</a>. Under Repository access choose <em>Only select repositories</em> and pick that repository. Under Permissions → Repository permissions set <em>Contents</em> to <em>Read and write</em>. Generate it and copy it.</li>
+        <li>Fill in the fields below and tap Connect.</li>
+      </ol>
+      <div class="set"><label for="own">Your GitHub username</label><input class="search" id="own" value="${esc(SY.owner||"")}" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="set"><label for="rep">Progress repository name</label><input class="search" id="rep" value="${esc(SY.repo||"govorya-progress")}" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="set"><label for="tok">Token</label><input class="search" id="tok" type="password" placeholder="github_pat_…" autocomplete="off"></div>
+      <button class="btn" id="connect">Connect</button>
+      <p class="small" id="cmsg" style="margin-top:10px"></p>`}
 
     <h2 style="margin-top:30px">How it works</h2>
     <p>Each word gets two cards. First you <strong>read</strong> it (or hear it) and recall the meaning. The next day a <strong>speaking</strong> card appears: you see the English and say the Bulgarian out loud. No typing — this app trains reading, listening and speaking.</p>
@@ -1081,10 +1201,25 @@ function renderMore(){
   const restore=txt=>{ const o=JSON.parse(txt); if(!o.cards) throw 0; o.settings={...DEFAULTS,...o.settings}; S=o; save(); };
   $("dl").onclick=()=>{ const b=new Blob([JSON.stringify(S)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="govorya-backup-"+today()+".json"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); };
   $("up").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ restore(await f.text()); alert("Progress restored."); render(); }catch(err){ alert("That file isn't a valid backup."); } };
-  $("reset").onclick=()=>{ if(confirm("Delete all progress? This can't be undone.")){ const keep=S.settings; S=fresh(); S.settings=keep; save(); render(); } };
+  if($("syncnow")) $("syncnow").onclick=()=>sync();
+  if($("unsync")) $("unsync").onclick=()=>{ if(confirm("Stop syncing on this device? Your progress stays here and on GitHub.")){ SY={owner:SY.owner,repo:SY.repo}; saveSY(); renderMore(); } };
+  if($("savetok")) $("savetok").onclick=()=>{ const v=$("tok2").value.trim(); if(!v) return; SY.token=v; saveSY(); sync(); renderMore(); };
+  if($("connect")) $("connect").onclick=async()=>{
+    const msg=$("cmsg"), btn=$("connect");
+    const cand={owner:$("own").value.trim(), repo:$("rep").value.trim(), token:$("tok").value.trim()};
+    if(!cand.owner||!cand.repo||!cand.token){ msg.textContent="Fill in all three fields."; return; }
+    btn.disabled=true; msg.textContent="Checking…";
+    const prev=SY; SY={...cand};
+    let r; try{ r=await gh("GET",repoPath()); }catch(e){ SY=prev; btn.disabled=false; msg.textContent=syncErr("network"); return; }
+    if(r.status!==200){ SY=prev; btn.disabled=false; msg.textContent=syncErr(r.status); return; }
+    if(r.data && r.data.private===false){ SY=prev; btn.disabled=false; msg.textContent="That repository is public, so anyone could read your progress. Make it private (Settings → General → Change visibility) and try again."; return; }
+    saveSY(); await sync(); renderMore();
+  };
+  $("reset").onclick=()=>{ if(confirm("Delete all progress? This can't be undone.")){ const keep=S.settings; S=fresh(); S.settings=keep; S.resetAt=Date.now(); save(); render(); } };
 }
 
 render();
+if(syncOn()) sync();
 if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>

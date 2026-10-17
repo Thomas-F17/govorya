@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = "govorya-v2";
+const VERSION = "govorya-v3";
 const FILES = ["./", "index.html", "manifest.webmanifest", "fonts/pt-sans-regular.woff2", "fonts/pt-sans-bold.woff2", "fonts/pt-sans-italic.woff2", "fonts/pt-sans-bolditalic.woff2", "fonts/pt-sans-narrow-bold.woff2", "fonts/bad-script.woff2",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
@@ -9,6 +9,6 @@ self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET") return;
+  if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(caches.match(e.request, {ignoreSearch: true}).then(hit => hit || fetch(e.request)));
 });

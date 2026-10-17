@@ -871,8 +871,20 @@ function streak(){ let n=0; const d=new Date(); const k=x=>x.getFullYear()+"-"+S
    SPEECH: text-to-speech + optional speech recognition
    ===================================================================== */
 let voices=[];
-function loadVoices(){ if(!("speechSynthesis" in window)) return; voices=speechSynthesis.getVoices().filter(v=>/^bg/i.test(v.lang)); }
-if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=()=>{ loadVoices(); if(view==="more"&&!session) render(); }; }
+let allVoices=[];
+function loadVoices(){
+  if(!("speechSynthesis" in window)) return;
+  const before=voices.length;
+  allVoices=speechSynthesis.getVoices();
+  voices=allVoices.filter(v=>/^bg([-_]|$)/i.test(v.lang||"") || /bulgar|българ/i.test(v.name||""));
+  return voices.length!==before;
+}
+if("speechSynthesis" in window){
+  loadVoices();
+  speechSynthesis.onvoiceschanged=()=>{ loadVoices(); if(!session) render(); };
+  /* Some browsers never fire voiceschanged; poll briefly after start-up. */
+  let tries=0; const poll=setInterval(()=>{ tries++; if(loadVoices() && !session) render(); if(voices.length||tries>10) clearInterval(poll); },500);
+}
 const hasVoice=()=>voices.length>0;
 function speak(text,rate,onend){
   if(!("speechSynthesis" in window)) return;
@@ -887,16 +899,62 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 function norm(s){return s.toLowerCase().replace(/[^\u0400-\u04FF ]/g,"").replace(/\s+/g," ").trim();}
 function lev(a,b){ const m=a.length,n=b.length; const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]); for(let j=1;j<=n;j++) d[0][j]=j; for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); return d[m][n]; }
 function similarity(a,b){ a=norm(a); b=norm(b); if(!a&&!b) return 1; return 1-lev(a,b)/Math.max(a.length,b.length); }
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+const STANDALONE = !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+function srError(code){
+  if(code==="not-allowed"){
+    if(IOS && STANDALONE) return "iPhone doesn't allow speech recognition inside home-screen apps, even with the microphone allowed. Use “Record myself” instead — or open the site in a Safari tab to use this check.";
+    if(IOS) return "Speech recognition was refused. On iPhone check Settings → Privacy & Security → Speech Recognition, and Settings → Apps → Safari → Microphone. Then reload the page.";
+    return "The microphone is blocked for this site. Allow it in the browser's site settings, then reload.";
+  }
+  if(code==="service-not-allowed") return IOS
+    ? "Speech recognition isn't available here. On iPhone it needs Dictation switched on (Settings → General → Keyboard → Enable Dictation), and it doesn't work in home-screen apps. “Record myself” works everywhere."
+    : "This browser's speech service isn't available. “Record myself” works without it.";
+  if(code==="language-not-supported") return "This device can't recognise Bulgarian speech. Use “Record myself” to compare by ear.";
+  if(code==="no-speech") return "Didn't hear anything. Tap, then speak right away.";
+  if(code==="network") return "Speech recognition needs an internet connection.";
+  if(code==="audio-capture") return "No microphone was found.";
+  return "Couldn't listen ("+code+").";
+}
 function listen(target,cb){
-  if(!SR){ cb({err:"This browser can't listen. Chrome on Android and Safari on iPhone usually can."}); return; }
+  if(!SR){ cb({err:"This browser can't do speech recognition. Use “Record myself” to compare by ear."}); return; }
+  if("speechSynthesis" in window) speechSynthesis.cancel();
   let done=false;
   try{
     const r=new SR(); r.lang=L.tts; r.interimResults=false; r.maxAlternatives=3;
     r.onresult=e=>{ done=true; const alts=[...e.results[0]].map(x=>x.transcript); let best=alts[0], sc=0; alts.forEach(x=>{const s=similarity(x,target); if(s>sc){sc=s;best=x;}}); cb({heard:best,score:sc}); };
-    r.onerror=e=>{ done=true; cb({err: e.error==="not-allowed"||e.error==="service-not-allowed" ? "Microphone access is blocked. Allow the microphone for this site in your browser settings." : e.error==="no-speech" ? "Didn't hear anything. Tap and speak right away." : "Couldn't listen ("+e.error+")."}); };
+    r.onerror=e=>{ done=true; cb({err:srError(e.error)}); };
     r.onend=()=>{ if(!done) cb({err:"Didn't catch that. Try again."}); };
     r.start();
   }catch(e){ cb({err:"Couldn't start the microphone here."}); }
+}
+
+/* Record yourself and play it back next to the voice. Nothing leaves the device. */
+const CAN_REC = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+let recorder=null, recStream=null, recTimer=null, myAudio=null;
+async function startRecording(onDone,onErr){
+  try{ recStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){ onErr(e && e.name==="NotAllowedError" ? (IOS ? "Microphone refused. On iPhone: Settings → Apps → Safari → Microphone → Allow (or Ask), then reload." : "Microphone refused. Allow it in the browser's site settings, then reload.") : "Couldn't open the microphone."); return false; }
+  const chunks=[];
+  try{ recorder=new MediaRecorder(recStream); }catch(e){ recStream.getTracks().forEach(t=>t.stop()); onErr("Recording isn't supported in this browser."); return false; }
+  recorder.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop=()=>{
+    clearTimeout(recTimer); recStream.getTracks().forEach(t=>t.stop()); recStream=null;
+    const blob=new Blob(chunks,{type:recorder.mimeType||"audio/mp4"}); recorder=null;
+    if(myAudio) URL.revokeObjectURL(myAudio.src);
+    myAudio=new Audio(URL.createObjectURL(blob));
+    onDone();
+  };
+  recorder.start(); recTimer=setTimeout(stopRecording,10000);
+  return true;
+}
+function stopRecording(){ if(recorder && recorder.state!=="inactive") recorder.stop(); }
+function playMine(thenVoiceText){
+  if(!myAudio) return;
+  if("speechSynthesis" in window) speechSynthesis.cancel();
+  myAudio.currentTime=0;
+  myAudio.onended = thenVoiceText && hasVoice() ? ()=>setTimeout(()=>speak(thenVoiceText),350) : null;
+  myAudio.play().catch(()=>{});
 }
 
 /* =====================================================================
@@ -941,7 +999,7 @@ function renderToday(){
     </div>
     <button class="btn wide" id="go" ${total?"":"disabled"}>${total?"Start today's practice":"All done for today"}</button>
     ${!total?`<p class="muted small" style="margin-top:10px">Come back tomorrow, or read a short text in the Read tab.</p>`:""}
-    ${!hasVoice()&&("speechSynthesis" in window)?`<div class="banner">No Bulgarian voice on this device yet, so audio is off. See More → Voice for how to add one.</div>`:""}
+    ${!hasVoice()&&("speechSynthesis" in window)?`<div class="banner">This browser can't see a Bulgarian voice, so audio is off. More → Voice explains how to fix it for your device.</div>`:""}
     <div class="week" aria-label="Last 7 days">${days.map(([k,l])=>`<i class="${S.log[k]?"on":""}" title="${k}: ${S.log[k]||0} reviews"><em lang="bg">${l}</em></i>`).join("")}</div>
     <div class="tip" style="margin-top:40px"><h3>${esc(tip[0])}</h3><p class="muted">${esc(tip[1])}</p></div>
     ${known?`<p class="muted small" style="margin-top:20px">${known} words you know well (3+ weeks between reviews).</p>`:""}
@@ -959,7 +1017,7 @@ function startSession(){
   nextCard();
 }
 function nextCard(){
-  const s=session; s.revealed=false; s.heard=null; s.hint=false;
+  const s=session; s.revealed=false; s.heard=null; s.hint=false; s.rec=null; stopRecording();
   if(!s.queue.length){ s.cur=null; render(); if(syncOn()) sync(); return; }
   s.cur=s.queue[0];
   const [type]=s.cur.split(":").slice(-1);
@@ -1009,7 +1067,9 @@ function renderStudy(){
       ${it.note?`<div class="note">${esc(it.note)}</div>`:""}
       <div class="row" style="margin-top:14px">
         ${hasVoice()?`<button class="icon-btn" id="play">▶ Listen</button><button class="icon-btn" id="slow2">Slowly</button>`:""}
-        ${SR?`<button class="icon-btn" id="mic">● Check my pronunciation</button>`:""}
+        ${CAN_REC?`<button class="icon-btn" id="rec">${s.rec==="on"?"■ Stop recording":"● Record myself"}</button>`:""}
+        ${s.rec==="done"?`<button class="icon-btn" id="mine">▶ Mine</button>${hasVoice()?`<button class="icon-btn" id="both">▶ Mine, then the voice</button>`:""}`:""}
+        ${SR && !(IOS&&STANDALONE)?`<button class="icon-btn" id="mic">Check with speech recognition</button>`:""}
       </div>
       ${s.heard?`<div class="heard">${s.heard.err?`<span class="no">${esc(s.heard.err)}</span>`:`Heard: <span lang="bg">“${esc(s.heard.heard)}”</span> — <span class="${s.heard.score>.85?"ok":s.heard.score>.6?"meh":"no"}">${s.heard.score>.85?"spot on":s.heard.score>.6?"close":"not quite"}</span>`}</div>`:""}
     </div>` : "";
@@ -1017,14 +1077,15 @@ function renderStudy(){
   const foot = s.revealed
     ? `<div class="grades">${["Again","Hard","Good","Easy"].map((l,g)=>`<button class="g${g}" data-g="${g}">${l}<small>${fmtIvl(schedule(c,g,now).d-now)}</small></button>`).join("")}</div>`
     : `<button class="btn wide" id="show">${s.mode==="speak"?"I've said it — show me":"Show answer"}</button>
-       ${s.mode==="speak"&&SR?`<button class="btn wide ghost" id="mic0" style="margin-top:8px">● Say it and check</button>`:""}`;
+       ${s.mode==="speak"&&CAN_REC?`<button class="btn wide ghost" id="rec0" style="margin-top:8px">${s.rec==="on"?"■ Stop — show me how it should sound":"● Record myself saying it"}</button>`:""}
+       ${s.mode==="speak"&&SR&&!(IOS&&STANDALONE)?`<button class="btn wide ghost" id="mic0" style="margin-top:8px">Say it and check with speech recognition</button>`:""}`;
   app.innerHTML=`<div class="study">
     <div class="study-top"><button class="x" id="quit" aria-label="End session">✕ End</button><div class="bar"><i style="width:${pct}%"></i></div><span class="muted small">${s.queue.length} left</span></div>
     <div class="stage"><div class="kind">${kindTxt}</div>${prompt}${reveal}</div>
     <div class="study-foot">${foot}</div>
   </div>`;
   const $=id=>document.getElementById(id);
-  $("quit").onclick=()=>{ speechSynthesis&&speechSynthesis.cancel(); session=null; render(); };
+  $("quit").onclick=()=>{ stopRecording(); speechSynthesis&&speechSynthesis.cancel(); session=null; render(); };
   if($("hint")) $("hint").onclick=()=>{ s.hint=true; render(); };
   if($("replay")) $("replay").onclick=()=>speak(r.text);
   if($("slow")) $("slow").onclick=()=>speak(r.text,0.6);
@@ -1032,6 +1093,17 @@ function renderStudy(){
   if($("slow2")) $("slow2").onclick=()=>speak(r.text,0.6);
   const doMic=(revealAfter)=>{ const b=$("mic")||$("mic0"); if(b){ b.textContent="Listening…"; b.disabled=true; } listen(r.text,res=>{ s.heard=res; if(revealAfter){ s.revealed=true; } render(); }); };
   if($("mic")) $("mic").onclick=()=>doMic(false);
+  const toggleRec=(revealAfter)=>{
+    if(s.rec==="on"){ stopRecording(); return; }
+    if("speechSynthesis" in window) speechSynthesis.cancel();
+    startRecording(()=>{ s.rec="done"; if(revealAfter) s.revealed=true; render(); playMine(r.text); },
+                   err=>{ s.rec=null; s.heard={err}; if(revealAfter) s.revealed=true; render(); })
+      .then(ok=>{ if(ok){ s.rec="on"; render(); } });
+  };
+  if($("rec")) $("rec").onclick=()=>toggleRec(false);
+  if($("rec0")) $("rec0").onclick=()=>toggleRec(true);
+  if($("mine")) $("mine").onclick=()=>playMine(null);
+  if($("both")) $("both").onclick=()=>playMine(r.text);
   if($("mic0")) $("mic0").onclick=()=>doMic(true);
   if($("show")) $("show").onclick=()=>{ s.revealed=true; render(); if(hasVoice()&&s.mode!=="listen") speak(r.text); };
   app.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>grade(+b.dataset.g));
@@ -1139,7 +1211,12 @@ function renderMore(){
       <p class="muted small">12 a day is about 15 minutes once reviews build up. You'll see all ${ITEMS.length} in about ${Math.ceil(ITEMS.length/st.newPerDay)} days.</p></div>
     <div class="set"><label for="voice">Voice</label>
       ${hasVoice()?`<select id="voice">${voices.map(v=>`<option value="${esc(v.voiceURI)}" ${v.voiceURI===st.voice?"selected":""}>${esc(v.name)}</option>`).join("")}</select>`
-        :`<p class="banner">No Bulgarian voice found${allVoices.length?"":" (or this browser has no speech)"}. On iPhone: Settings → Accessibility → Spoken Content → Voices → Bulgarian, then download one. On Android: Settings → Text-to-speech → Google → Install voice data → Bulgarian. Then reopen this page.</p>`}
+        :`<div class="banner"><p style="margin-top:0"><strong>This browser can't see a Bulgarian voice yet.</strong></p>
+          <p><strong>Windows:</strong> Chrome only sees older Windows voices, so a voice from a Bulgarian language pack usually doesn't show up in Chrome even when it's installed. Open this site in <strong>Microsoft Edge</strong> instead: it has Bulgarian voices built in (they need internet).</p>
+          <p><strong>Mac:</strong> System Settings → Accessibility → Spoken Content → System voice → Manage Voices → Bulgarian. Then quit and reopen the browser.</p>
+          <p><strong>iPhone:</strong> Settings → Accessibility → Spoken Content → Voices → Bulgarian, then download one.</p>
+          <p><strong>Android:</strong> Settings → Text-to-speech → Google → Install voice data → Bulgarian.</p>
+          <p class="small muted" style="margin-bottom:0">This browser currently offers ${allVoices.length} voice${allVoices.length===1?"":"s"}${allVoices.length?": "+esc([...new Set(allVoices.map(v=>(v.lang||"?").slice(0,2)))].sort().join(", ")):""}.</p></div>`}
       <label for="rate" style="margin-top:10px">Speaking speed: ${st.rate.toFixed(2)}×</label><input id="rate" type="range" min="0.5" max="1.1" step="0.05" value="${st.rate}">
       ${hasVoice()?`<button class="icon-btn" id="test" style="margin-top:8px">▶ Test: ${R("Здраве'йте").cyr}</button>`:""}
     </div>

@@ -814,7 +814,7 @@ const BY_ID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
    STATE + PERSISTENCE (on this device only; nothing leaves your phone)
    ===================================================================== */
 const KEY="govorya-bg-v1";
-const DEFAULTS={sounds:true, showHand:true, newPerDay:12, rate:0.85, showStress:true, phonFirst:false, audioFirst:0.3, voice:"", theme:""};
+const DEFAULTS={minutes:10, sounds:true, showHand:true, newPerDay:12, rate:0.85, showStress:true, phonFirst:false, audioFirst:0.3, voice:"", theme:""};
 let S = fresh();
 function fresh(){return {v:1, updatedAt:0, resetAt:0, cards:{}, intro:{}, log:{}, tests:[], games:{}, settings:{...DEFAULTS}};}
 function shape(o){ o.cards=o.cards||{}; o.intro=o.intro||{}; o.log=o.log||{}; o.tests=o.tests||[]; o.games=o.games||{}; o.settings={...DEFAULTS,...(o.settings||{})}; return o; }
@@ -887,7 +887,7 @@ async function sync(){
       if(g.status===200){ sha=g.data.sha; try{ remote=JSON.parse(b64dec(g.data.content)); }catch(e){ remote=null; } }
       else if(g.status!==404) throw g.status;
       const before=sig(S);
-      if(remote) mergeRemote(remote);
+      if(remote){ mergeRemote(remote); parkSpeaking(false); }
       if(sig(S)!==before){ changed=true; persist(); }
       if(remote && sig(remote)===sig(S)){ done=true; break; }
       const body={message:`Progress from ${deviceName()}, ${new Date().toISOString().slice(0,16).replace("T"," ")}`,
@@ -932,22 +932,51 @@ const today=()=>{const d=new Date(); return d.getFullYear()+"-"+String(d.getMont
 const endOfDay=()=>{const d=new Date(); d.setHours(23,59,59,999); return d.getTime();};
 function schedule(c0,grade,now){
   const c = c0 && c0.e!=null ? {...c0} : {e:2.5,i:0,r:0,l:0,s:0,d:now};
+  /* Days late. Remembering a card you reviewed late proves you know it better, so it earns a longer gap. */
+  const late = c0 && c0.i>0 && c0.t ? Math.max(0,(now-c0.t)/DAY - c0.i) : 0;
   c.t=now;
   if(grade===0){ if(c.r>0) c.l++; c.r=0; c.i=0; c.s=0; c.e=Math.max(1.3,c.e-0.2); c.d=now+MIN; }
   else if(grade===1){ if(c.i===0) c.d=now+5*MIN; else { c.i=Math.max(1,c.i*1.2); c.d=now+c.i*DAY; } c.e=Math.max(1.3,c.e-0.15); }
   else if(grade===2){
     if(c.i===0){ if(c.s===0){ c.s=1; c.d=now+10*MIN; } else { c.i=1; c.r++; c.d=now+DAY; } }
-    else { c.i=c.i*c.e; c.r++; c.d=now+c.i*DAY; }
-  } else { c.i = c.i===0 ? 4 : c.i*c.e*1.3; c.e+=0.15; c.r++; c.d=now+c.i*DAY; }
+    else { c.i=(c.i+late/2)*c.e; c.r++; c.d=now+c.i*DAY; }
+  } else { c.i = c.i===0 ? 4 : (c.i+late)*c.e*1.3; c.e+=0.15; c.r++; c.d=now+c.i*DAY; }
   return c;
 }
 function fmtIvl(ms){ if(ms<60*MIN) return Math.max(1,Math.round(ms/MIN))+"m"; if(ms<DAY) return Math.round(ms/36e5)+"h"; const d=ms/DAY; if(d<30) return Math.round(d)+"d"; if(d<365) return Math.round(d/30)+"mo"; return (d/365).toFixed(1)+"y"; }
 function status(itemId){ const c=S.cards[itemId+":r"]; if(!c) return "new"; return c.i>=21?"known":"learning"; }
-function dueList(){ const eod=endOfDay(); return Object.entries(S.cards).filter(([id,c])=>c.d<=eod && BY_ID[id.slice(0,id.lastIndexOf(":"))]).sort((a,b)=>a[1].d-b[1].d).map(x=>x[0]); }
+function dueList(){
+  const eod=endOfDay(), isS=id=>id.endsWith(":s")?1:0;
+  return Object.entries(S.cards).filter(([id,c])=>c.d<=eod && BY_ID[id.slice(0,id.lastIndexOf(":"))])
+    .sort((a,b)=>(a[1].i-b[1].i)||(isS(a[0])-isS(b[0]))||(a[1].d-b[1].d)).map(x=>x[0]);
+}
+/* Daily plan, sized to the time you chose. Reviews come first; new cards only fill what's left.
+   Anything over the limit simply waits, most urgent first. */
+const SEC_REV=10, SEC_NEW=30;
+function plan(){
+  const due=dueList();
+  const learning=due.filter(id=>S.cards[id].i===0), rest=due.filter(id=>S.cards[id].i>0);
+  const left=Math.max(0, S.settings.minutes*60 - (S.log[today()]||0)*SEC_REV);
+  const nRev=Math.min(rest.length, Math.max(0, Math.floor(left/SEC_REV) - learning.length));
+  const newMax=Math.max(0, S.settings.newPerDay-introducedToday());
+  const newRoom=Math.max(0, Math.min(newMax, Math.floor((left-due.length*SEC_REV)/SEC_NEW)));
+  return {due:[...learning,...rest.slice(0,nRev)], extra:rest.slice(nRev), backlog:due.length, nw:newList(newRoom), paused: newMax>0 && newRoom<newMax && due.length*SEC_REV>left*0.6};
+}
+/* Speaking cards wait until you can read the word reliably (4+ days between reviews). */
+function parkSpeaking(persist){
+  const now=Date.now(); let n=0;
+  for(const [id,c] of Object.entries(S.cards)){
+    if(!id.endsWith(":s") || c.p || c.r>0 || c.i>0 || c.l>0) continue;
+    const rc=S.cards[id.slice(0,-2)+":r"]; if(rc && rc.i>=4) continue;
+    S.cards[id]={...c, p:1, d:now+3650*DAY, t:now}; n++;
+  }
+  if(n && persist) save();
+  return n;
+}
 function introducedToday(){ const t=today(); let n=0; for(const [id,c] of Object.entries(S.cards)) if(c.f===t && id.endsWith(":r")) n++; return Math.max(n,S.intro[t]||0); }
 function startedWordCount(){ let n=0; for(const it of ITEMS) if(it.cat!=="sent" && S.cards[it.id+":r"]) n++; return n; }
-function newList(){
-  const room=Math.max(0,S.settings.newPerDay-introducedToday()); const out=[]; if(!room) return out;
+function newList(roomOverride){
+  const room = roomOverride!=null ? roomOverride : Math.max(0,S.settings.newPerDay-introducedToday()); const out=[]; if(!room) return out;
   const words=[], sents=[];
   for(const it of ITEMS){ if(S.cards[it.id+":r"]) continue; (it.cat==="sent"?sents:words).push(it); }
   let wi=0, si=0, wc=startedWordCount(), k=0;
@@ -1090,8 +1119,10 @@ function render(){
 
 /* ---------- Today ---------- */
 function renderToday(){
-  const due=dueList(), nw=newList();
+  const P=plan(), due=P.due, nw=P.nw;
   const reviews=due.length, total=reviews+nw.length;
+  const mins=Math.max(1,Math.round((reviews*SEC_REV+nw.length*SEC_NEW)/60));
+  const waiting=P.extra.length;
   const learnt=startedWordCount(), known=ITEMS.filter(i=>status(i.id)==="known").length;
   const sentStarted=ITEMS.filter(i=>i.cat==="sent" && S.cards[i.id+":r"]).length;
   const lastTest=S.tests[S.tests.length-1]; const canTest=ITEMS.filter(i=>S.cards[i.id+":r"]).length>=8;
@@ -1108,13 +1139,17 @@ function renderToday(){
       <div class="sub"><span class="phon">${g.phon}</span>${st?` — day ${st} in a row`:""}</div>
     </section>
     <div class="counts">
-      <div><strong>${reviews}</strong><span>to review</span></div>
+      <div><strong>${reviews}</strong><span>${waiting&&reviews?`to review (of ${P.backlog})`:"to review"}</span></div>
       <div><strong>${nw.length}</strong><span>new today</span></div>
       <div><strong>${learnt}</strong><span>of ${WORD_COUNT} words</span></div>
     </div>
     <p class="small" style="margin:-6px 0 16px"><strong>${level()}</strong> <span class="muted">— ${sentStarted} of ${SENT_COUNT} sentences started${unlockIn?`, more unlock in ${unlockIn} words`:""}.</span></p>
-    <button class="btn wide" id="go" ${total?"":"disabled"}>${total?"Start today's practice":"All done for today"}</button>
-    ${!total?`<p class="muted small" style="margin-top:10px">Come back tomorrow, or test yourself and play a game in the meantime.</p>`:""}
+    ${total
+      ? `<button class="btn wide" id="go">Start today's practice — about ${mins} min</button>`
+      : `<button class="btn wide" id="extra">${waiting?`Extra practice: ${Math.min(20,waiting)} more reviews`:"Learn 5 extra words"}</button>`}
+    ${!total?`<p class="muted small" style="margin-top:10px">Today's ${S.settings.minutes} minutes are done. ${waiting?`${waiting} cards are waiting; they'll be spread over the next few days, so there's no need to catch up all at once.`:"Come back tomorrow, or test yourself and play a game."}</p>`:""}
+    ${total&&waiting?`<p class="small" style="margin-top:10px"><strong>${P.backlog} cards are due</strong> <span class="muted">— more than fit in ${S.settings.minutes} minutes. Today covers the ${reviews} most important; the rest wait, most urgent first.${P.paused?" New words are paused until the pile is smaller.":""}</span></p>`:""}
+    ${total&&!waiting&&P.paused?`<p class="muted small" style="margin-top:10px">Fewer new words today so reviews fit in your ${S.settings.minutes} minutes.</p>`:""}
     <div class="row" style="margin-top:10px">
       <button class="btn ghost" id="testgo" style="flex:1" ${canTest?"":"disabled"}>Test yourself</button>
       <button class="btn ghost" id="gamesgo" style="flex:1">Play a game</button>
@@ -1126,17 +1161,21 @@ function renderToday(){
     ${known?`<p class="muted small" style="margin-top:20px">${known} words you know well (3+ weeks between reviews).</p>`:""}
     ${syncOn()?`<p class="muted small synctext" data-sync style="margin-top:8px">${esc(syncText())}</p>`:""}
   </div>`;
-  const go=document.getElementById("go"); if(go) go.onclick=startSession;
+  const go=document.getElementById("go"); if(go) go.onclick=()=>startSession();
+  const ex=document.getElementById("extra"); if(ex) ex.onclick=()=>startSession({extra:true});
   document.getElementById("testgo").onclick=startTest;
   document.getElementById("gamesgo").onclick=()=>{ view="games"; render(); window.scrollTo(0,0); };
 }
 
 /* ---------- Study session ---------- */
-function startSession(){
-  const due=dueList(), nw=newList(); const q=[];
+function startSession(opts){
+  const P=plan(), extra=opts&&opts.extra;
+  const due = extra ? P.extra.slice(0,20) : P.due;
+  const nw = extra ? (P.extra.length ? [] : newList(5)) : P.nw;
+  const q=[];
   let di=0, ni=0;
   while(di<due.length||ni<nw.length){ for(let k=0;k<3&&di<due.length;k++) q.push(due[di++]); if(ni<nw.length) q.push(nw[ni++]); }
-  session={queue:q, total:q.length, done:0, cur:null, revealed:false, heard:null, mode:null, hint:false, again:0};
+  session={queue:q, total:q.length, done:0, graded:0, pause:false, cur:null, revealed:false, heard:null, mode:null, hint:false, again:0};
   nextCard();
 }
 function nextCard(){
@@ -1147,7 +1186,7 @@ function nextCard(){
   const c=S.cards[s.cur];
   s.mode = type==="s" ? "speak" : (hasVoice() && c && c.r>0 && Math.random()<S.settings.audioFirst) ? "listen" : "read";
   render();
-  if(s.mode==="listen") setTimeout(()=>speak(R(BY_ID[itemOf(s.cur)].bg).text),250);
+  if(s.mode==="listen" && !s.pause) setTimeout(()=>speak(R(BY_ID[itemOf(s.cur)].bg).text),250);
 }
 const itemOf = cid => cid.slice(0,cid.lastIndexOf(":"));
 function grade(g){
@@ -1155,17 +1194,32 @@ function grade(g){
   const isNew=!prev;
   const c=schedule(prev,g,now); S.cards[cid]=c;
   if(isNew && cid.endsWith(":r")){ c.f=today(); S.intro[today()]=(S.intro[today()]||0)+1; }
-  if(cid.endsWith(":r") && g>=2 && !S.cards[itemOf(cid)+":s"]) S.cards[itemOf(cid)+":s"]={e:2.5,i:0,r:0,l:0,s:0,d:now+DAY,t:now};
+  if(c.i>=3){ c.i*=0.95+Math.random()*0.1; c.d=now+c.i*DAY; }  /* small jitter so reviews don't bunch up on one day */
+  const sid=itemOf(cid)+":s";
+  if(cid.endsWith(":r") && c.i>=4){ const sc=S.cards[sid]; if(!sc) S.cards[sid]={e:2.5,i:0,r:0,l:0,s:0,d:now+2*DAY,t:now}; else if(sc.p) S.cards[sid]={...sc,p:0,d:now+2*DAY,t:now}; }
   S.log[today()]=(S.log[today()]||0)+1;
   save();
   s.queue.shift();
   if(c.d < now+20*MIN){ const pos=Math.min(s.queue.length, 3+Math.floor(Math.random()*3)); s.queue.splice(pos,0,cid); if(g===0) s.again++; }
   else s.done++;
   if(s.done>s.total) s.total=s.done;
+  s.graded++;
+  if(s.graded%20===0 && s.queue.length) s.pause=true;
   nextCard();
 }
 function renderStudy(){
   const s=session;
+  if(s.pause && s.cur){
+    app.innerHTML=`<div class="study"><div class="stage done">
+      <div class="big s2">${s.graded} cards</div>
+      <p style="font-size:18px">Nice work. ${s.queue.length} left in this session — about ${Math.max(1,Math.round(s.queue.length*SEC_REV/60))} min.</p>
+      <p class="muted small">Stopping here is fine: everything you've done is saved, and the rest will wait.</p>
+      <div class="row" style="justify-content:center;margin-top:18px"><button class="btn ghost" id="stop">Stop for now</button><button class="btn" id="cont">Keep going</button></div>
+    </div></div>`;
+    document.getElementById("stop").onclick=()=>{ session=null; render(); if(syncOn()) sync(); };
+    document.getElementById("cont").onclick=()=>{ s.pause=false; render(); if(s.mode==="listen") setTimeout(()=>speak(R(BY_ID[itemOf(s.cur)].bg).text),250); };
+    return;
+  }
   if(!s.cur){
     app.innerHTML=`<div class="study"><div class="stage done">
       <div class="big s2 bg" lang="bg">${R("Бра'во!").cyr}</div>${HW("Браво!","card s2")}
@@ -1332,9 +1386,12 @@ function renderMore(){
   const allVoices = ("speechSynthesis" in window) ? speechSynthesis.getVoices() : [];
   app.innerHTML=`<div class="wrap">
     <h2>Settings</h2>
-    <div class="set"><label for="npd">New cards per day</label>
+    <div class="set"><label for="mins">Daily practice time</label>
+      <select id="mins">${[5,10,15,20,30,45].map(n=>`<option value="${n}" ${n===st.minutes?"selected":""}>${n} minutes</option>`).join("")}</select>
+      <p class="muted small">Each day's practice is sized to fit. Reviews come first; new cards fill whatever time is left. If you miss days, the extra reviews wait and are spread out instead of landing all at once.</p></div>
+    <div class="set"><label for="npd">New cards per day (at most)</label>
       <select id="npd">${[5,8,10,12,15,20,30].map(n=>`<option ${n===st.newPerDay?"selected":""}>${n}</option>`).join("")}</select>
-      <p class="muted small">12 a day is about 15 minutes once reviews build up. You'll meet all ${WORD_COUNT} words and ${SENT_COUNT} sentences in about ${Math.ceil(ITEMS.length/st.newPerDay)} days.</p></div>
+      <p class="muted small">Every new card brings about 5 reviews over the following weeks, so this is what really sets your daily load. At ${st.newPerDay} a day you'd meet all ${WORD_COUNT} words and ${SENT_COUNT} sentences in about ${Math.ceil(ITEMS.length/st.newPerDay)} days, if time allows.</p></div>
     <div class="set"><label for="voice">Voice</label>
       ${hasVoice()?`<select id="voice">${voices.map(v=>`<option value="${esc(v.voiceURI)}" ${v.voiceURI===st.voice?"selected":""}>${esc(v.name)}</option>`).join("")}</select>`
         :`<div class="banner"><p style="margin-top:0"><strong>This browser can't see a Bulgarian voice yet.</strong></p>
@@ -1382,8 +1439,9 @@ function renderMore(){
       <p class="small" id="cmsg" style="margin-top:10px"></p>`}
 
     <h2 style="margin-top:30px">How it works</h2>
-    <p>Each word gets two cards. First you <strong>read</strong> it (or hear it) and recall the meaning. The next day a <strong>speaking</strong> card appears: you see the English and say the Bulgarian out loud. No typing — this app trains reading, listening and speaking.</p>
+    <p>Each word gets two cards. First you <strong>read</strong> it (or hear it) and recall the meaning. Once you know it well enough to go 4 days between reviews, a <strong>speaking</strong> card joins in: you see the English and say the Bulgarian out loud. No typing — this app trains reading, listening and speaking.</p>
     <p>Rate yourself honestly. <em>Again</em> brings the card back in a minute; <em>Good</em> pushes it further each time you remember it (1 day, then about 3, 7, 18…). The words are ordered by how often they're used, so the first 100 already cover a large share of everyday speech.</p>
+    <p>Your daily practice fits the time you set (10 minutes to start). When more is due than fits, the cards you're still learning come first and the rest wait. New words pause until you've caught up, and cards you remember after a break get a longer gap, so a missed week doesn't snowball. Every 20 cards there's a natural stopping point.</p>
     <p>Sentences join your lessons as you go: the first ones unlock after 20 words, and every few hundred words brings longer, more natural ones. About one new card in three is a sentence once they're unlocked.</p>
     <p><strong>Tests</strong> (on the Today screen) give you 12 mixed questions — meanings, listening, speaking, word order and missing words — picked from the cards you find hardest. Anything you miss goes straight back into your reviews, and your scores are kept so you can watch them climb.</p>
     <p><strong>Games</strong> only use words and sentences you've already met, so they get richer the further you go.</p>
@@ -1393,6 +1451,7 @@ function renderMore(){
   </div>`;
   const $=id=>document.getElementById(id);
   $("npd").onchange=e=>{ st.newPerDay=+e.target.value; save(); renderMore(); };
+  $("mins").onchange=e=>{ st.minutes=+e.target.value; save(); };
   if($("voice")) $("voice").onchange=e=>{ st.voice=e.target.value; save(); speak("Здравейте"); };
   $("rate").oninput=e=>{ st.rate=+e.target.value; e.target.previousElementSibling.textContent=`Speaking speed: ${st.rate.toFixed(2)}×`; };
   $("rate").onchange=()=>save();
@@ -1803,6 +1862,7 @@ function renderGameOver(){
   if(g.newBest) beep(true);
 }
 
+parkSpeaking(true);
 render();
 if(syncOn()) sync();
 if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
